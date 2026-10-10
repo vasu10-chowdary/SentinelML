@@ -1,0 +1,49 @@
+# SentinelML V2 — .gitignore
+# ===========================
+# Prevents sensitive credentials and build artifacts from being committed.
+
+# ── LOCAL CREDENTIALS — NEVER COMMIT ─────────────────────────────────────────
+.env
+.env.*
+*.env
+.sentinelml_v2.json
+sentinelml-ai-backend/.env
+sentinelml-ai-backend/.env.*
+
+# ── PYINSTALLER BUILD ARTIFACTS ───────────────────────────────────────────────
+build/
+dist/
+*.spec.bak
+__pycache__/
+*.pyc
+*.pyo
+
+# ── VIRTUALENVS ───────────────────────────────────────────────────────────────
+venv/
+linux_venv/
+build_env/
+.venv/
+env/
+
+# ── LOGS ──────────────────────────────────────────────────────────────────────
+logs/
+*.log
+linux_build.log
+linux_stage6.log
+build_log.txt
+build_log2.txt
+
+# ── CRASH / TEMP FILES ────────────────────────────────────────────────────────
+CRASH.log
+*.tmp
+*.bak
+
+# ── PYTHON CACHE ──────────────────────────────────────────────────────────────
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp

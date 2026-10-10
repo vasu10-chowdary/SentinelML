@@ -1,0 +1,57 @@
+{
+  "report_id": "20261002_221721",
+  "timestamp": "2026-10-02T22:17:21.909868",
+  "system": {
+    "platform": "Windows",
+    "platform_release": "11",
+    "platform_version": "10.0.26200",
+    "architecture": "AMD64",
+    "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "hostname": "Vasu",
+    "python_version": "3.14.3"
+  },
+  "scan": {
+    "status": "completed",
+    "features": {
+      "count": 19,
+      "values": [
+        304.0,
+        0.0,
+        4.435120557851009,
+        5.532374171628128,
+        0.0,
+        2.0,
+        139.0,
+        2.0,
+        121.0,
+        23.0,
+        167602.0,
+        195.0,
+        14.0,
+        1.0,
+        4.0,
+        14.0,
+        201.0,
+        1.0,
+        0.0
+      ],
+      "shape": "(1, 19)"
+    },
+    "statistics": {
+      "files": 47839,
+      "procs": 304
+    }
+  },
+  "prediction": {
+    "status": "error",
+    "error": "could not convert string to float: 'safe'"
+  },
+  "alerts": {
+    "count": 0,
+    "items": []
+  },
+  "metadata": {
+    "sentinelml_version": "2.0.0",
+    "report_type": "incident"
+  }
+}

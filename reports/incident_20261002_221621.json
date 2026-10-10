@@ -1,0 +1,30 @@
+{
+  "report_id": "20261002_221621",
+  "timestamp": "2026-10-02T22:16:21.437445",
+  "system": {
+    "platform": "Windows",
+    "platform_release": "11",
+    "platform_version": "10.0.26200",
+    "architecture": "AMD64",
+    "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "hostname": "Vasu",
+    "python_version": "3.14.3"
+  },
+  "scan": {
+    "status": "error",
+    "error": "'ScanResult' object has no attribute 'shape'"
+  },
+  "prediction": {
+    "status": "no_prediction",
+    "threat_level": null,
+    "probability": null
+  },
+  "alerts": {
+    "count": 0,
+    "items": []
+  },
+  "metadata": {
+    "sentinelml_version": "2.0.0",
+    "report_type": "incident"
+  }
+}

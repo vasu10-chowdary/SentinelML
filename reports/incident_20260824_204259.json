@@ -1,0 +1,68 @@
+{
+  "report_id": "20260824_204259",
+  "timestamp": "2026-08-24T20:42:59.625780",
+  "system": {
+    "platform": "Windows",
+    "platform_release": "11",
+    "platform_version": "10.0.26200",
+    "architecture": "AMD64",
+    "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "hostname": "Vasu",
+    "python_version": "3.14.3"
+  },
+  "scan": {
+    "status": "completed",
+    "features": {
+      "count": 19,
+      "values": [
+        0.2925445864472609,
+        0.9006572496654989,
+        0.3152267007156184,
+        0.8115037954677765,
+        0.6633273784582897,
+        0.23205551844092365,
+        0.2367773948443188,
+        0.09300734688727219,
+        0.15213795050156997,
+        0.0860787957190664,
+        0.7826431216551558,
+        0.18027476984321433,
+        0.6672386049367488,
+        0.9200123957002992,
+        0.37027091701398596,
+        0.4776260433596291,
+        0.2806688286536251,
+        0.8006907131528439,
+        0.7801618455028058
+      ],
+      "shape": "(1, 19)"
+    },
+    "statistics": {
+      "duration": 4.2,
+      "processes_scanned": 320,
+      "errors": 0
+    }
+  },
+  "prediction": {
+    "status": "completed",
+    "threat_level": "WARNING",
+    "probability": 0.65,
+    "confidence": "65.00%"
+  },
+  "alerts": {
+    "count": 1,
+    "included": 1,
+    "items": [
+      {
+        "severity": "WARNING",
+        "title": "Test Alert",
+        "message": "This is a test",
+        "timestamp": "2026-08-24T20:42:59.625771"
+      }
+    ]
+  },
+  "metadata": {
+    "sentinelml_version": "2.0.0",
+    "report_type": "incident"
+  }
+}

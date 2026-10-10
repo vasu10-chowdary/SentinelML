@@ -1,0 +1,33 @@
+# SentinelML V2 — Linux Build Requirements
+# ==========================================
+# Install these on your Ubuntu/Kali system before running linux_build.sh
+# All versions are pinned for reproducibility.
+#
+# Run: pip install -r requirements-linux.txt
+
+# GUI Framework
+customtkinter==6.0.0
+
+# System Monitoring (Linux-compatible)
+psutil>=5.9.0
+
+# Machine Learning
+scikit-learn==1.8.0
+numpy==2.4.3
+scipy>=1.10.0
+joblib==1.5.3
+
+# HTTP / SentinelAI
+requests>=2.28.0
+certifi
+charset-normalizer
+idna
+
+# Image handling (CTk icons)
+Pillow>=9.0.0
+
+# Thread control (sklearn dependency)
+threadpoolctl>=3.0.0
+
+# Build tool (only needed to create the standalone package)
+pyinstaller>=6.0.0

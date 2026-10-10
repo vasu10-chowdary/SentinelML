@@ -1,0 +1,32 @@
+# SentinelML V2 — Dependencies
+# ===============================
+# Verified and cleaned - Phase 14
+
+# GUI Framework
+customtkinter==6.0.0
+
+# System Monitoring
+psutil==7.2.2
+
+# Machine Learning
+scikit-learn==1.8.0
+numpy==2.4.3
+pandas==2.3.3
+joblib==1.5.3
+
+# Packaging (Development/Build only)
+pyinstaller==6.22.2
+
+# Notes:
+# - customtkinter: Required for GUI (includes tkinter dependency)
+# - psutil: Required for system/process monitoring
+# - scikit-learn: Required for ML model (RandomForestClassifier)
+# - numpy: Required by scikit-learn and for feature arrays
+# - pandas: Used by scikit-learn internally
+# - joblib: Required for loading .pkl model files
+# - pyinstaller: Only needed for building EXE (Phases 17-19)
+
+# Optional (not required for core functionality):
+# pystray: System tray icon (if Guard needs tray icon)
+# Pillow: Image handling for tray icon
+# watchdog: Real-time filesystem events (enhancement for Guard)

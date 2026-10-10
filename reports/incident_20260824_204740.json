@@ -1,0 +1,120 @@
+{
+  "report_id": "20260824_204740",
+  "timestamp": "2026-08-24T20:47:40.913948",
+  "system": {
+    "platform": "Windows",
+    "platform_release": "11",
+    "platform_version": "10.0.26200",
+    "architecture": "AMD64",
+    "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "hostname": "Vasu",
+    "python_version": "3.14.3"
+  },
+  "scan": {
+    "status": "completed",
+    "features": {
+      "count": 19,
+      "values": [
+        324.0,
+        33.7,
+        16.0,
+        2400.0,
+        2400.0,
+        76.9,
+        3.6092796325683594,
+        6.1,
+        0.696929931640625,
+        66.5,
+        178.55941820144653,
+        180.90496397018433,
+        5122429.0,
+        232.6331672668457,
+        448.73441982269287,
+        332629.0,
+        484153.0,
+        6.0,
+        0.0
+      ],
+      "shape": "(1, 19)"
+    },
+    "statistics": {
+      "duration": 4.508966684341431,
+      "processes_scanned": 324,
+      "errors": 0
+    }
+  },
+  "prediction": {
+    "status": "completed",
+    "threat_level": "WARNING",
+    "probability": 0.79,
+    "confidence": "79.00%"
+  },
+  "alerts": {
+    "count": 5,
+    "included": 5,
+    "items": [
+      {
+        "id": "b5f2f71f-777a-4d3a-a733-887ec4190b5b",
+        "timestamp": "2026-08-24T20:47:40.853844",
+        "severity": "HIGH",
+        "category": "scanner",
+        "title": "WARNING Detected",
+        "message": "Threat detected with 79.0% probability",
+        "source": "IntegrationTest",
+        "metadata": {
+          "probability": 0.79,
+          "features_count": 19
+        },
+        "status": "new"
+      },
+      {
+        "id": "f5f71318-fd8e-4439-829a-f24cda8f86dd",
+        "timestamp": "2026-08-24T20:39:33.102410",
+        "severity": "INFO",
+        "category": "test",
+        "title": "Thread 2 Alert 4",
+        "message": "Message from thread 2",
+        "source": "thread_2",
+        "metadata": {},
+        "status": "new"
+      },
+      {
+        "id": "e49d4d34-221e-48ee-8f2f-ec0c61e6a2c6",
+        "timestamp": "2026-08-24T20:39:33.076351",
+        "severity": "INFO",
+        "category": "test",
+        "title": "Thread 1 Alert 4",
+        "message": "Message from thread 1",
+        "source": "thread_1",
+        "metadata": {},
+        "status": "new"
+      },
+      {
+        "id": "94f5fc2a-1115-4938-8144-2b1e4b493892",
+        "timestamp": "2026-08-24T20:39:33.042401",
+        "severity": "INFO",
+        "category": "test",
+        "title": "Thread 0 Alert 4",
+        "message": "Message from thread 0",
+        "source": "thread_0",
+        "metadata": {},
+        "status": "new"
+      },
+      {
+        "id": "9ebcf248-b63a-4e7a-8830-669a01055a94",
+        "timestamp": "2026-08-24T20:39:32.996339",
+        "severity": "INFO",
+        "category": "test",
+        "title": "Thread 2 Alert 3",
+        "message": "Message from thread 2",
+        "source": "thread_2",
+        "metadata": {},
+        "status": "new"
+      }
+    ]
+  },
+  "metadata": {
+    "sentinelml_version": "2.0.0",
+    "report_type": "incident"
+  }
+}

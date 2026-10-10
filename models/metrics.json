@@ -1,0 +1,44 @@
+{
+  "Random Forest": {
+    "accuracy": 0.9567,
+    "precision": 0.955,
+    "recall": 0.9795,
+    "f1_score": 0.9671,
+    "roc_auc": 0.9483,
+    "cv_f1_mean": 0.9608
+  },
+  "SVM": {
+    "accuracy": 0.9567,
+    "precision": 0.955,
+    "recall": 0.9795,
+    "f1_score": 0.9671,
+    "roc_auc": 0.9574,
+    "cv_f1_mean": 0.9608
+  },
+  "Gradient Boosting": {
+    "accuracy": 0.94,
+    "precision": 0.9447,
+    "recall": 0.9641,
+    "f1_score": 0.9543,
+    "roc_auc": 0.9421,
+    "cv_f1_mean": 0.9557
+  },
+  "XGBoost": {
+    "accuracy": 0.9533,
+    "precision": 0.9502,
+    "recall": 0.9795,
+    "f1_score": 0.9646,
+    "roc_auc": 0.9527,
+    "cv_f1_mean": 0.9589
+  },
+  "Logistic Regression": {
+    "accuracy": 0.9567,
+    "precision": 0.955,
+    "recall": 0.9795,
+    "f1_score": 0.9671,
+    "roc_auc": 0.9476,
+    "cv_f1_mean": 0.9602
+  },
+  "best_model": "Random Forest",
+  "optimal_threshold": 0.9
+}
