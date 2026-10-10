@@ -134,10 +134,11 @@ class SentinelAIPage(ctk.CTkFrame):
             "SentinelAI",
             "Hello. I am SentinelAI — the security copilot for SentinelML.\n\n"
             "I can explain scan results, analyze behavioral indicators, and give defensive recommendations.\n\n"
-            "If AI Status shows DISABLED or NOT_CONFIGURED:\n"
-            "  \u2192 Go to Settings > SentinelAI Copilot\n"
-            "  \u2192 Enable SentinelAI and enter your Gemini API key\n"
-            "  \u2192 Click SAVE KEY then TEST CONNECTION\n\n"
+            "If AI Status shows DISABLED:\n"
+            "  \u2192 Go to Settings > SentinelAI Copilot and Enable SentinelAI\n\n"
+            "If AI Status shows OFFLINE, UNAVAILABLE, ERROR or TIMEOUT:\n"
+            "  \u2192 The AI service is temporarily unreachable.\n"
+            "  \u2192 Click TEST CONNECTION in Settings to retry, or provide a personal Gemini API key as a fallback.\n\n"
             "If AI Status shows READY, you can start asking questions below."
         )
 
@@ -145,7 +146,7 @@ class SentinelAIPage(ctk.CTkFrame):
         if hasattr(self._main_window, 'ai_copilot'):
             status = self._main_window.ai_copilot.status
             color = C["green"] if status == "READY" else C["orange"]
-            if status in ["ERROR", "UNAVAILABLE"]:
+            if status in ["ERROR", "UNAVAILABLE", "TIMEOUT", "OFFLINE"]:
                 color = C["red"]
             self._ai_status.configure(text=f"AI Status: {status}", text_color=color)
         self.after(2000, self._update_status_task)

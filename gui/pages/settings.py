@@ -260,7 +260,7 @@ class SettingsPage(ctk.CTkFrame):
             font=ctk.CTkFont(size=12), text_color=C["muted"]
         ).pack(side="left")
 
-        key_entry = ctk.CTkEntry(key_frame, width=260, show="•", placeholder_text="Requires your own API key")
+        key_entry = ctk.CTkEntry(key_frame, width=260, show="•", placeholder_text="(Optional) Fallback Gemini API key")
         key_entry.pack(side="right")
         existing_key = ai_cfg.get("gemini_api_key", "")
         if existing_key:

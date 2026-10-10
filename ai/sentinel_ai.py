@@ -62,22 +62,27 @@ class SentinelAI:
             return
             
         prov = None
+        backend_status = None
+        backend_msg = ""
         
         if mode in ("backend", "auto"):
             url = self.config.get("backend_url", "http://127.0.0.1:8000")
-            prov = SentinelBackendProvider(url)
-            status_code, msg = prov.is_available()
+            backend_prov = SentinelBackendProvider(url)
+            status_code, msg = backend_prov.is_available()
             if status_code == "READY":
                 self.status = status_code
                 self.status_detail = msg
-                self.provider = prov
-                log.info(f"SentinelAI initialized with {prov.get_name()}")
+                self.provider = backend_prov
+                log.info(f"SentinelAI initialized with {backend_prov.get_name()}")
                 return
-            elif mode == "backend":
-                self.status = status_code
-                self.status_detail = msg
-                log.warning(f"SentinelAI backend initialization failed: {msg}")
-                return
+            else:
+                backend_status = status_code
+                backend_msg = msg
+                if mode == "backend":
+                    self.status = status_code
+                    self.status_detail = msg
+                    log.warning(f"SentinelAI backend initialization failed: {msg}")
+                    return
         
         # Local / fallback
         if mode in ("local", "auto"):
@@ -91,13 +96,19 @@ class SentinelAI:
                 
             if prov:
                 status_code, msg = prov.is_available()
-                self.status = status_code
-                self.status_detail = msg
                 if status_code == "READY":
+                    self.status = status_code
+                    self.status_detail = msg
                     self.provider = prov
-                    log.info(f"SentinelAI initialized with {prov.get_name()}")
+                    log.info(f"SentinelAI initialized with {prov.get_name()} (Fallback)")
+                    return
                 else:
                     log.warning(f"SentinelAI local initialization failed: {msg}")
+            
+            if mode == "auto" and backend_status:
+                self.status = backend_status
+                self.status_detail = backend_msg
+                log.warning(f"SentinelAI backend failed and no fallback available: {backend_msg}")
             else:
                 self.status = "NOT_CONFIGURED"
                 self.status_detail = "API Key is missing."
@@ -156,7 +167,7 @@ class SentinelAI:
 
     def explain_scan(self, scan_result) -> str:
         if not self.provider or self.status != "READY":
-            return "SentinelAI is currently unavailable. Ensure it is enabled and configured in Settings."
+            return "SentinelAI is temporarily unavailable. Please try again later. (Check Settings if you wish to configure a personal API key fallback)."
 
         try:
             return self.ask("Explain my latest scan", scan_result)
