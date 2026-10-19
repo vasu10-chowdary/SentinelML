@@ -507,5 +507,199 @@ class TestLiveInferenceValidation(unittest.TestCase):
         self.assertTrue(hasattr(outcome, "limitation_notes"))
 
 
+class TestSchemaV2AndEmpiricalPipeline(unittest.TestCase):
+    """
+    Automated checks for Schema V2, benign collector, dataset management,
+    leakage prevention, and honest simulation/provenance indicators.
+    """
+
+    def test_schema_v2_feature_names_and_indices(self):
+        """Verify Schema V2 has exactly 16 defined features with matching indices."""
+        from ml.schema_v2 import FEATURE_NAMES_V2, FEATURE_SPECIFICATIONS
+        self.assertEqual(len(FEATURE_NAMES_V2), 16)
+        self.assertEqual(len(FEATURE_SPECIFICATIONS), 16)
+        for idx, name in enumerate(FEATURE_NAMES_V2):
+            self.assertIn(name, FEATURE_SPECIFICATIONS)
+            spec = FEATURE_SPECIFICATIONS[name]
+            self.assertEqual(spec.index, idx)
+            self.assertEqual(spec.name, name)
+
+    def test_schema_v2_vector_validation_and_bounds(self):
+        """Verify vector validation accepts valid arrays and rejects out-of-bounds/NaN."""
+        from ml.schema_v2 import validate_schema_v2_vector, FEATURE_NAMES_V2
+        # Valid vector
+        valid_vec = np.zeros((1, len(FEATURE_NAMES_V2)), dtype=np.float64)
+        is_valid, errors = validate_schema_v2_vector(valid_vec)
+        self.assertTrue(is_valid)
+        self.assertEqual(len(errors), 0)
+
+        # Invalid shape (wrong length)
+        invalid_shape = np.zeros((1, 10), dtype=np.float64)
+        is_valid, errors = validate_schema_v2_vector(invalid_shape)
+        self.assertFalse(is_valid)
+
+        # Non-finite (NaN / Inf)
+        nan_vec = np.zeros((1, len(FEATURE_NAMES_V2)), dtype=np.float64)
+        nan_vec[0, 4] = np.nan
+        is_valid, errors = validate_schema_v2_vector(nan_vec)
+        self.assertFalse(is_valid)
+
+        # Out of bounds entropy (> 8.0)
+        oob_vec = np.zeros((1, len(FEATURE_NAMES_V2)), dtype=np.float64)
+        oob_vec[0, 4] = 9.5
+        is_valid, errors = validate_schema_v2_vector(oob_vec)
+        self.assertFalse(is_valid)
+
+    def test_schema_v2_vector_serialization_and_recovery(self):
+        """Verify BehavioralVectorV2 converts to dict and recovers losslessly."""
+        from ml.schema_v2 import BehavioralVectorV2, FEATURE_NAMES_V2
+        feats = np.arange(len(FEATURE_NAMES_V2), dtype=np.float64)
+        vec = BehavioralVectorV2(
+            features=feats,
+            timestamp=1700000000.0,
+            os_version="Windows 11",
+            telemetry_quality_score=0.95,
+            missing_sensor_count=1,
+            workload_type="BENIGN_TEST",
+            ground_truth_label=0
+        )
+        d = vec.to_dict()
+        recovered = BehavioralVectorV2.from_dict(d)
+        np.testing.assert_array_almost_equal(vec.features, recovered.features)
+        self.assertEqual(vec.workload_type, recovered.workload_type)
+        self.assertEqual(vec.telemetry_quality_score, recovered.telemetry_quality_score)
+        self.assertEqual(vec.missing_sensor_count, recovered.missing_sensor_count)
+
+    def test_benign_collector_sampling_and_quality_score(self):
+        """Verify collector captures empirical Schema V2 vector with high quality score."""
+        import tempfile
+        from ml.collector_v2 import BenignTelemetryCollector
+        with tempfile.TemporaryDirectory() as td:
+            collector = BenignTelemetryCollector(storage_dir=Path(td) / "storage")
+            vec = collector.sample_once(target_directory=Path(td), workload_type="BENIGN_UNIT_TEST")
+            self.assertEqual(len(vec.features), 16)
+            self.assertTrue(np.isfinite(vec.features).all())
+            self.assertGreaterEqual(vec.telemetry_quality_score, 0.70)
+            self.assertEqual(vec.workload_type, "BENIGN_UNIT_TEST")
+            self.assertEqual(vec.ground_truth_label, 0)
+
+    def test_benign_collector_session_lifecycle_and_deletion(self):
+        """Verify collector session start, sampling, stop, review, and deletion."""
+        import tempfile
+        from ml.collector_v2 import BenignTelemetryCollector
+        with tempfile.TemporaryDirectory() as td:
+            collector = BenignTelemetryCollector(storage_dir=Path(td) / "storage")
+            session_id = collector.start_collection(target_directory=Path(td), session_name="test_sess")
+            self.assertTrue(collector.is_collecting)
+
+            # Sample records
+            collector.sample_once(target_directory=Path(td), workload_type="BENIGN_IDLE")
+            collector.sample_once(target_directory=Path(td), workload_type="BENIGN_IDLE")
+
+            summary = collector.stop_collection()
+            self.assertFalse(collector.is_collecting)
+            self.assertEqual(summary["total_records"], 2)
+            self.assertEqual(summary["status"], "COMPLETED")
+
+            # Review session
+            review = collector.review_session(session_id)
+            self.assertEqual(review["records_count"], 2)
+
+            # Delete session
+            deleted = collector.delete_session(session_id)
+            self.assertTrue(deleted)
+            self.assertEqual(len(collector.list_sessions()), 0)
+
+    def test_dataset_manager_validation_and_deduplication(self):
+        """Verify dataset manager catches duplicates and schema errors."""
+        import pandas as pd
+        from ml.dataset_manager import DatasetManager
+        from ml.schema_v2 import FEATURE_NAMES_V2
+        dm = DatasetManager()
+
+        # Build dummy dataframe with duplicate row
+        row = {f: 1.0 for f in FEATURE_NAMES_V2}
+        row["label"] = 0
+        df = pd.DataFrame([row, row, row])  # 3 identical rows
+        self.assertEqual(len(df), 3)
+
+        cleaned_df, dropped = dm.deduplicate(df)
+        self.assertEqual(len(cleaned_df), 1)
+        self.assertEqual(dropped, 2)
+
+        # Validate schema
+        is_valid, errors = dm.validate_dataframe(cleaned_df)
+        self.assertTrue(is_valid)
+
+        # Test failure on missing column
+        bad_df = cleaned_df.drop(columns=[FEATURE_NAMES_V2[0]])
+        is_valid_bad, errors_bad = dm.validate_dataframe(bad_df)
+        self.assertFalse(is_valid_bad)
+        self.assertTrue(any(FEATURE_NAMES_V2[0] in e for e in errors_bad))
+
+    def test_dataset_manager_leakage_free_split(self):
+        """Verify dataset manager partitions data into disjoint, non-overlapping splits."""
+        import pandas as pd
+        from ml.dataset_manager import DatasetManager
+        from ml.schema_v2 import FEATURE_NAMES_V2
+        dm = DatasetManager()
+
+        rows = []
+        for i in range(100):
+            r = {f: float(i + idx) for idx, f in enumerate(FEATURE_NAMES_V2)}
+            r["label"] = i % 2
+            rows.append(r)
+        df = pd.DataFrame(rows)
+
+        train_df, val_df, test_df = dm.split_dataset(df, test_size=0.15, val_size=0.15, random_state=42)
+        self.assertEqual(len(train_df) + len(val_df) + len(test_df), 100)
+        self.assertEqual(len(test_df), 15)
+        self.assertIn(len(val_df), [14, 15, 16])
+        self.assertIn(len(train_df), [69, 70, 71])
+
+        # Ensure no overlap between test and train
+        train_first_col = set(train_df[FEATURE_NAMES_V2[0]])
+        test_first_col = set(test_df[FEATURE_NAMES_V2[0]])
+        self.assertEqual(len(train_first_col.intersection(test_first_col)), 0)
+
+    def test_train_v2_readiness_gate_blocks_on_missing_ransomware(self):
+        """Verify train_v2 stops before training if empirical ransomware telemetry is absent."""
+        from ml.train_v2 import ModelTrainerV2
+        trainer = ModelTrainerV2()
+        report = trainer.run_training(dataset_path=None)
+        self.assertEqual(report["status"], "TRAINING_BLOCKED")
+        self.assertEqual(report["reason"], "DATASET_UNAVAILABLE")
+
+    def test_scan_result_and_report_provenance_and_honest_simulation(self):
+        """Verify ScanResult and report export include provenance and simulation transparency."""
+        import json
+        from scanner.scan_engine import ScanResult, ScanType, ScanState
+        from exhibition.report_exporter import ExhibitionReportExporter
+        res = ScanResult(scan_type=ScanType.QUICK, state=ScanState.SAFE)
+        self.assertEqual(res.model_source, "EXPERIMENTAL_SYNTHETIC_BASELINE_V1")
+        self.assertFalse(res.is_simulation)
+        self.assertEqual(res.observable_schema, "SCHEMA_V2_COMPATIBLE")
+
+        # Test report exporter simulation detection
+        exporter = ExhibitionReportExporter()
+        paths = exporter.export_report(
+            mode_title="Scenario Simulation Demo",
+            scan_state="SAFE",
+            ml_prediction="SAFE",
+            probability=0.12,
+            duration_s=1.5,
+            features={"file_mod_rate": 2.0},
+            evidence_events=[]
+        )
+        with open(paths["json"], "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.assertEqual(data["model_evaluated"], "EXPERIMENTAL_SYNTHETIC_BASELINE_V1")
+        self.assertTrue(data["is_simulation"])
+        self.assertEqual(data["observable_schema"], "SCHEMA_V2_COMPATIBLE")
+        paths["json"].unlink(missing_ok=True)
+        paths["md"].unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

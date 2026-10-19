@@ -82,6 +82,11 @@ class ScanResult:
     cancelled: bool = False
     error_message: str = ""
     
+    # Model Provenance & Simulation Transparency
+    model_source: str = "EXPERIMENTAL_SYNTHETIC_BASELINE_V1"
+    is_simulation: bool = False
+    observable_schema: str = "SCHEMA_V2_COMPATIBLE"
+    
     def was_successful(self) -> bool:
         """
         Check if scan completed successfully with valid security classification.

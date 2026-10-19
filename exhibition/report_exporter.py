@@ -99,11 +99,15 @@ class ExhibitionReportExporter:
             "evidence_events": sanitized_events,
             "errors_encountered": [sanitize_path(e) for e in (errors or [])],
             "notes": sanitize_path(notes),
+            "model_evaluated": "EXPERIMENTAL_SYNTHETIC_BASELINE_V1",
+            "is_simulation": ("simulation" in mode_title.lower() or "synthetic" in mode_title.lower() or "scenario" in mode_title.lower() or "test" in mode_title.lower()),
+            "observable_schema": "SCHEMA_V2_COMPATIBLE",
             "safety_disclaimer": (
                 "SAFE means this scan did not detect a threat under the checks performed. "
                 "It does not guarantee that the entire system is malware-free."
             ),
             "system_limitations": [
+                "Evaluated using experimental synthetic-data baseline model (unvalidated against live ransomware)",
                 "Unprivileged user-space (Ring-3) visibility limits",
                 "Heuristic proxy fidelity (e.g. malfind and mutex approximation)",
                 "Platform asymmetry: Windows handles and services unavailable on Linux"
