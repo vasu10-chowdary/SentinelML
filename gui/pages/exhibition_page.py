@@ -263,7 +263,7 @@ class ExhibitionPage(ctk.CTkFrame):
         health = self._test_lab.check_demo_health()
         if health["healthy"]:
             self._health_lbl.configure(
-                text="✓ System Diagnostic Ready (Sandbox Safe, Model Loaded, Sensors Active)",
+                text="[OK] System Diagnostic Ready (Sandbox Safe, Model Loaded, Sensors Active)",
                 text_color=EX_COLORS["safe"]
             )
         else:
