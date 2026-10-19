@@ -701,5 +701,166 @@ class TestSchemaV2AndEmpiricalPipeline(unittest.TestCase):
         paths["md"].unlink(missing_ok=True)
 
 
+class TestExhibitionExperienceAndSafeDemo(unittest.TestCase):
+    """
+    Automated verification for the Exhibition Experience, One-Click Safe Demo,
+    Concurrency Locking, 6-Stage Evidence Pipeline, and Transparent Feature Inspector.
+    """
+
+    def setUp(self):
+        self.test_sandbox = PROJECT_ROOT / "temp_demo_test_sandbox"
+        self.lab = SecurityTestLab(self.test_sandbox)
+        self.lab.simulator.reset_sandbox()
+
+    def tearDown(self):
+        self.lab.simulator.reset_sandbox()
+        if self.test_sandbox.exists():
+            import shutil
+            shutil.rmtree(self.test_sandbox, ignore_errors=True)
+
+    def test_demo_health_check_valid(self):
+        """Pre-demo health check must pass on normal environment."""
+        health = self.lab.check_demo_health()
+        self.assertTrue(health["healthy"])
+        self.assertTrue(health["sandbox_ok"])
+        self.assertTrue(health["model_ok"])
+        self.assertTrue(health["sensors_ok"])
+        self.assertTrue(health["concurrency_ok"])
+        self.assertEqual(len(health["warnings"]), 0)
+        self.assertGreater(len(health["details"]), 0)
+
+    def test_demo_health_check_failure_detection(self):
+        """Health check must detect active concurrency lock."""
+        self.lab._demo_lock.acquire()
+        try:
+            health = self.lab.check_demo_health(check_concurrency=True)
+            self.assertFalse(health["healthy"])
+            self.assertFalse(health["concurrency_ok"])
+            self.assertTrue(any("Concurrency lock" in w for w in health["warnings"]))
+        finally:
+            self.lab._demo_lock.release()
+
+    def test_concurrency_lock_protection(self):
+        """Concurrent calls to run_safe_demo must be rejected with RuntimeError."""
+        self.lab._demo_lock.acquire()
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                self.lab.run_safe_demo()
+            self.assertIn("Concurrency Lock", str(ctx.exception))
+        finally:
+            self.lab._demo_lock.release()
+
+        # Confirm lock was cleanly released
+        self.assertFalse(self.lab._demo_lock.locked())
+
+    def test_run_safe_demo_full_6_stages(self):
+        """Safe demo must execute all 6 stages and achieve honest WARNING detection."""
+        res = self.lab.run_safe_demo(num_files=10, delay_between_ops=0.005, cleanup_after=True)
+        self.assertEqual(res["status"], "SUCCESS")
+        self.assertEqual(res["mode"], "CONTROLLED_SANDBOX_SIMULATION")
+        self.assertTrue(res["is_simulation"])
+        self.assertTrue(res["detection_achieved"])
+        self.assertEqual(res["threat_level"], "WARNING")
+        self.assertIsNotNone(res["probability"])
+        self.assertGreaterEqual(res["probability"], 0.50)
+        self.assertLess(res["probability"], 0.90)
+
+        stages = res["stages"]
+        self.assertEqual(len(stages), 6)
+        expected_names = [
+            "Harmless Sandbox Simulation Activity",
+            "Filesystem Observation",
+            "Telemetry Collection",
+            "Feature Vector Validation",
+            "Model Inference",
+            "Threat Classification & Operational Limitations"
+        ]
+        for idx, s in enumerate(stages):
+            self.assertEqual(s["stage_num"], idx + 1)
+            self.assertEqual(s["name"], expected_names[idx])
+            self.assertTrue(s["passed"])
+            self.assertIsInstance(s["metrics"], dict)
+            self.assertIn("limitation", s)
+
+        # Confirm operational limitations disclosure
+        limitations = res["operational_limitations"]
+        self.assertGreaterEqual(len(limitations), 3)
+        self.assertTrue(any("WARNING" in l for l in limitations))
+        self.assertTrue(any("CRITICAL" in l for l in limitations))
+        self.assertTrue(any("USER-SPACE ISOLATION" in l for l in limitations))
+
+    def test_automatic_sandbox_cleanup(self):
+        """Sandbox files must be completely removed when cleanup_after=True."""
+        res = self.lab.run_safe_demo(num_files=10, delay_between_ops=0.005, cleanup_after=True)
+        self.assertEqual(res["status"], "SUCCESS")
+
+        remaining = list(self.test_sandbox.iterdir())
+        self.assertEqual(len(remaining), 0)
+
+        # Test manual reset_sandbox
+        self.lab.simulator.run_simulation(num_files=5, delay_between_ops=0.005)
+        self.assertGreater(len(list(self.test_sandbox.iterdir())), 0)
+        cleaned = self.lab.simulator.reset_sandbox()
+        self.assertGreaterEqual(cleaned, 5)
+        self.assertEqual(len(list(self.test_sandbox.iterdir())), 0)
+
+    def test_transparent_feature_inspector_completeness(self):
+        """Feature inspector metadata must be complete for both schemas."""
+        inspector = self.lab.get_feature_inspector_data()
+        self.assertIn("legacy_19", inspector)
+        self.assertIn("schema_v2_16", inspector)
+
+        legacy = inspector["legacy_19"]
+        v2 = inspector["schema_v2_16"]
+        self.assertEqual(len(legacy), 19)
+        self.assertEqual(len(v2), 16)
+
+        required_keys = [
+            "index", "name", "display_name", "measured_value", "baseline_normal",
+            "unit", "collection_source", "model_usage", "collection_cost", "status", "description"
+        ]
+        for f in legacy:
+            for k in required_keys:
+                self.assertIn(k, f)
+                self.assertIsNotNone(f[k])
+
+        for f in v2:
+            for k in required_keys:
+                self.assertIn(k, f)
+                self.assertIsNotNone(f[k])
+            self.assertIn("false_positive_risks", f)
+
+    def test_deterministic_walkthrough_execution_and_badging(self):
+        """Walkthrough must execute deterministically and carry unambiguous badge."""
+        res = self.lab.run_deterministic_walkthrough()
+        self.assertEqual(res["status"], "SUCCESS")
+        self.assertEqual(res["mode"], "EDUCATIONAL_WALKTHROUGH")
+        self.assertEqual(res["badge"], "[EDUCATIONAL WALKTHROUGH — NOT LIVE SCAN]")
+        self.assertTrue(res["is_simulation"])
+        self.assertTrue(res["detection_achieved"])
+        self.assertEqual(res["threat_level"], "WARNING")
+        self.assertEqual(res["probability"], 0.56)
+
+        self.assertEqual(len(res["stages"]), 6)
+        for s in res["stages"]:
+            self.assertTrue(s["passed"])
+            self.assertTrue("Educational trace" in s["limitation"])
+
+        self.assertIn("legacy_19", res["feature_inspector"])
+        self.assertIn("schema_v2_16", res["feature_inspector"])
+
+    def test_simulation_vs_real_scan_distinction(self):
+        """Distinction between simulation and real host scan must be strictly preserved."""
+        # Simulated run
+        demo_res = self.lab.run_safe_demo(num_files=10, delay_between_ops=0.005, cleanup_after=True)
+        self.assertTrue(demo_res["is_simulation"])
+        self.assertEqual(demo_res["mode"], "CONTROLLED_SANDBOX_SIMULATION")
+
+        # Real scan result object
+        real_scan = ScanResult(scan_type=ScanType.QUICK, state=ScanState.SAFE)
+        self.assertFalse(real_scan.is_simulation)
+        self.assertEqual(real_scan.model_source, "EXPERIMENTAL_SYNTHETIC_BASELINE_V1")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

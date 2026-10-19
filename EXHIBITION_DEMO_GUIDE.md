@@ -1,87 +1,98 @@
-# SENTINELML V2 — EXHIBITION DEMONSTRATION & BOOTH GUIDE
+# SentinelML V2 — Exhibition Demonstration Guide
 
-**Target Event:** College Technical Exhibition / Faculty Evaluation / Project Viva  
-**Presenters:** Vasu Chowdary, Moulica Chowdary, D. M. Yashaswini  
-**Project:** SentinelML V2 — Behavioral Machine-Learning Endpoint Intrusion Detection System  
-**Document Revision:** 2.0.0 (October 2026)  
-**Demonstration Mode:** Polished Navy/Muted-Gold Exhibition UI  
+## Overview
+
+This guide provides a structured, professional, and scientifically honest demonstration protocol for presenting **SentinelML V2** at public engineering exhibitions, academic project reviews, and cybersecurity symposiums.
 
 ---
 
-## 1. Exhibition Objective & Tone
+## 1. Quick-Start Demonstration Protocol (3-Minute Booth Script)
 
-The purpose of this exhibition is to demonstrate **genuine cybersecurity engineering**, **honest machine-learning evaluation**, and **resilient software architecture** to college visitors, professors, and technical evaluators.
+### Step 1: Establish the Problem & Architecture (30 Seconds)
+> *"Welcome! SentinelML V2 is an open-source, machine-learning-assisted ransomware detection research project. Unlike traditional signature-based antivirus, SentinelML inspects behavioral indicators such as file modification bursts, Shannon entropy elevation, and process telemetry to identify unauthorized encryption in near real-time."*
 
-### Core Booth Principles
-1. **Never Fake Detection:** Do not present simulated files as live malware or claim 100% ransomware immunity.
-2. **Deterministic Local ML:** The scikit-learn Random Forest (100 trees, 19 features) is authoritative. The cloud LLM copilot (SentinelAI) is advisory-only and cannot alter security boundaries.
-3. **Fail-Safe Integrity:** A scan failure or unhandled exception transitions strictly to `SCAN_INCOMPLETE` or `ANALYSIS_ERROR`. It **never** silently defaults to `SAFE`.
-4. **Transparent Boundaries:** Plainly disclose the difference between kernel minifilters (Ring 0) and unprivileged user daemons (Ring 3).
-
----
-
-## 2. 3–5 Minute Presentation Script & Walkthrough
-
-### Act 1: The Problem (0:00 – 0:45)
-- **Visual Action:** Open SentinelML on the **Dashboard** or click **Exhibition** in the left sidebar.
-- **Presenter Speaks:**
-  > *"Good morning/afternoon. Traditional antivirus software relies primarily on static file signatures—looking for known byte sequences or MD5 hashes. But modern ransomware evades static tools within seconds through polymorphic compilers, runtime packers, and obfuscated droppers.*  
-  > *SentinelML addresses this by focusing on **behavioral telemetry**—monitoring what a system is actually doing rather than what a binary looks like. We extract 19 runtime indicators using unprivileged operating-system APIs and evaluate them through a trained Random Forest classifier."*
-
-### Act 2: Genuine System Scan (0:45 – 1:45)
-- **Visual Action:** In the **Exhibition** tab, select **A. Live System Scan [REAL]** and click **Start Live System Scan**.
-- **What Evaluators See:**
-  - Real-time progress counting inspected files and running process descriptors.
-  - Duration measured dynamically (3–5 seconds).
-  - All 19 extracted features populated in real time (process counts, Shannon entropy, active network sockets, loaded crypto DLLs).
-  - ML decision: `SAFE` ($p \approx 0.05 - 0.20$).
-- **Presenter Speaks:**
-  > *"Notice that this is a 100% genuine live scan. It enumerated active processes via `psutil`, sampled file entropy in user document roots, normalized the values with `StandardScaler`, and ran inference through 100 decision trees.*  
-  > *Notice our prominent disclaimer: 'SAFE means this scan did not detect a threat under the checks performed. It does not guarantee that the entire machine is malware-free.' In cybersecurity, intellectual honesty is critical."*
-
-### Act 3: Controlled Behavior Simulation (1:45 – 3:00)
-- **Visual Action:** Switch to **B. Behavior Simulator [SANDBOX]** and click **Launch Harmless Simulation**.
-- **What Evaluators See:**
-  - Synthetic documents created exclusively in the isolated `temp_sandbox` directory.
-  - Burst modifications replacing content with high-entropy bytes (Shannon entropy jumping from ~3.5 to >7.8 bits/byte).
-  - Rapid file renaming appending `.locked_sim`.
-  - Harmless ransom note generated: `READ_ME_RECOVERY_SIM.txt`.
-- **Presenter Speaks:**
-  > *"Here we simulate the behavioral footprint of ransomware—rapid file writes, elevated entropy, and bulk renaming—without executing a single line of malicious code.*  
-  > *All operations are strictly locked to a disposable sandbox folder. Our software rejects any path traversal or symlinks escaping this folder. Notice the Observation vs Reality panel: host telemetry remains SAFE because no real process was hollowed and no user documents were touched. Sandboxing preserves host integrity."*
-
-### Act 4: Worst-Case Security Test Lab (3:00 – 4:15)
-- **Visual Action:** Switch to **C. Security Test Lab [WORST-CASE]**. Click **Incomplete Process Telemetry** or **Scan Interruption & Cancellation**.
-- **What Evaluators See:**
-  - Execution outcome displays `TEST RESULT: PASSED [VERIFIED INVARIANT]`.
-  - State transitions immediately to `SCAN_INCOMPLETE` with threat level `ANALYSIS_ERROR`.
-- **Presenter Speaks:**
-  > *"A critical vulnerability in commercial utilities is 'silent failure'—when an error occurs, naive software catches the exception and displays a green 'System Clean' checkmark.*  
-  > *SentinelML enforces formal scan-state machine invariants: any exception, access denial, or mid-scan cancellation branches strictly to `SCAN_INCOMPLETE` or `ANALYSIS_ERROR`. An incomplete scan is NEVER called SAFE."*
-
-### Act 5: Architecture & Limitations (4:15 – 5:00)
-- **Visual Action:** Switch to **D. Evidence & Incident Viewer**. Click **Export Demonstration Report (Sanitized)**.
-- **Presenter Speaks:**
-  > *"Finally, we generate an audit report with sensitive usernames and paths automatically redacted. In conclusion: SentinelML proves that unprivileged user-space machine learning can detect behavioral anomalies while avoiding kernel-driver crashes. While we cannot stop low-level rootkits at Ring 0, our decoupled AI architecture provides explainable endpoint intrusion detection without compromising system stability. Thank you, and we welcome your questions."*
+Point to the top header banner and pipeline cards:
+- **Telemetry Sensors**: Windows user-space polling (`psutil`, filesystem crawlers).
+- **Behavioral Vectors**: 19 legacy features & 16 Schema V2 features.
+- **Classifier Engine**: 100-estimator Random Forest with `StandardScaler`.
+- **Advisory LLM**: SentinelAI (Ring-3 advisory, strictly decoupled from local ML decisions).
 
 ---
 
-## 3. Evaluator Questions & Technical Answers
+### Step 2: Run the One-Click Safe Demonstration (90 Seconds)
 
-| Evaluator Question | Recommended Response |
-|---|---|
-| **"Why not use a kernel minifilter driver (Ring 0) like Windows Defender?"** | *"Kernel drivers offer deeper filesystem control, but they introduce severe stability risks (kernel panics / Blue Screens) and expand the attack surface via BYOVD (Bring Your Own Vulnerable Driver) exploits. SentinelML demonstrates what is achievable purely at user-space (Ring 3), making it lightweight, modular, and portable."* |
-| **"Why is SentinelAI decoupled from the ML model?"** | *"Generative AI models are non-deterministic and vulnerable to prompt injection or hallucination. We enforce a strict security boundary: the deterministic local Random Forest authoritatively determines whether an alert is SAFE or CRITICAL. SentinelAI only acts downstream as a human-readable copilot."* |
-| **"What if ransomware encrypts files slowly to bypass entropy thresholds?"** | *"That is a documented limitation of heuristic rate-limiting. Low-thread, delayed ransomware is designed to stay beneath burst thresholds. That is why SentinelML combines 19 distinct features—including process hollowing proxies, loaded crypto DLLs, and shadow-copy deletion checks—rather than relying on entropy alone."* |
-| **"Can SentinelML automatically decrypt or recover locked files?"** | *"No. SentinelML is an Intrusion Detection System (IDS), not an automatic remediation engine. It detects and alerts. Recovery requires offline, uncorrupted Volume Shadow Copies or immutable cloud backups."* |
+1. Navigate to **Tab A: Safe Demo & 6-Stage Pipeline [SANDBOX]**.
+2. Point out the **Health Diagnostic Status**:
+   - `✓ System Diagnostic Ready (Sandbox Safe, Model Loaded, Sensors Active)`
+3. Click the prominent gold **`▶ Run Safe Demo`** button.
+4. Walk the audience through the **6-Stage Evidence Pipeline** as the cards light up:
+
+| Stage | Name | What the Audience Sees | Scientific Explanation |
+| :---: | :--- | :--- | :--- |
+| **1** | **Harmless Sandbox Activity** | 20 synthetic files created, modified with pseudorandom bytes, and renamed to `.locked_sim`. | *"Notice that this runs strictly within a dedicated `temp_sandbox/` directory. Zero user documents or system directories are touched."* |
+| **2** | **Filesystem Observation** | Scanner enumerates 20 files, flagging 20 `.locked_sim` items and 1 educational note. | *"Our user-space filesystem scanner detects the burst changes and flags the suspicious extension pattern."* |
+| **3** | **Telemetry Collection** | Average Shannon entropy jumps from ~4.1 to **~7.89 bits/byte**. | *"Encrypted ciphertext has near-maximum entropy (close to 8.0 bits/byte). Plaintext documents are typically 3.5 to 5.0."* |
+| **4** | **Feature Vector Validation** | Validates Legacy 19-position vector and Schema V2 16-position vector. | *"Vectors are sanitized and validated against NaN, infinity, and schema bounds before entering the ML pipeline."* |
+| **5** | **Model Inference** | 100-tree Random Forest votes; inference completes in **< 15 ms**. | *"56 out of 100 trees vote for threat based on the elevated entropy profile."* |
+| **6** | **Threat Classification** | Final Decision: **`WARNING` (Probability: ~0.56)**. | *"The model assigns probability 0.56, crossing our 0.50 WARNING threshold."* |
 
 ---
 
-## 4. Emergency Troubleshooting at the Booth
+### Step 3: Explain the "Why Warning and Not Critical" Invariant (45 Seconds)
 
-- **If the application window closes unexpectedly:**
-  Launch via command prompt: `python app.py` from `C:\Users\vasur\Desktop\SentinalMl`. All logs are written to `logs/app.log`.
-- **If sandbox files are left behind:**
-  Click the **↻ Reset Demo** button in the header, or click **Cleanup Sandbox** on Tab B. The directory is safely purged automatically.
-- **If the remote AI service is slow or times out:**
-  Explain to the evaluator: *"The local Random Forest is operating 100% offline. The cloud LLM copilot is advisory-only, proving our decoupling guarantee."*
+This is the key academic distinction that impresses judges and senior evaluators:
+
+> *"Notice that the system flagged this as **`WARNING` (0.56)** rather than **`CRITICAL` (0.90)**. Why? Because the simulation operates strictly in an unprivileged sandbox without executing a malicious process. No shadow copies were deleted (`vssadmin`), and no thread injection occurred.*
+>
+> *If high entropy alone triggered a CRITICAL shutdown, the system would produce false positives whenever a user compresses a `.zip` archive or exports high-definition video. SentinelML enforces a multi-signal corroboration invariant: entropy flags a warning, but critical action requires correlated process anomalies."*
+
+---
+
+### Step 4: Transparent Feature Inspection (30 Seconds)
+
+1. Switch to **Tab D: Feature Inspector & Audit Evidence**.
+2. Toggle between **Schema V2 (16 Observable Features)** and **Legacy Baseline (19 Features)**.
+3. Click on `avg_shannon_entropy` or `file_mod_rate` to show the full technical audit specification:
+   - Measured Value vs Normal Baseline
+   - Sensor Source (`psutil`, filesystem crawler)
+   - Collection Cost and False Positive Risks
+4. Click **`💾 Export Demonstration Report`** to generate a sanitized Markdown & JSON audit bundle in `/reports`.
+
+---
+
+### Step 5: Instant Reset to Ready (15 Seconds)
+
+1. Click the **`↻ Reset to Ready`** button on the top command bar.
+2. The sandbox files are purged immediately.
+3. Status badge returns to `STATE: RESET` -> `STATE: IDLE`, ready for the next visitor.
+
+---
+
+## 2. Handling Special Demonstration Scenarios
+
+### Scenario A: Offline Booth / Restricted Network
+If the exhibition venue lacks internet connectivity:
+- The Random Forest classifier and StandardScaler are **100% local** and run offline without latency.
+- Click **`📖 Walkthrough`** to run the pre-computed deterministic educational replay, visibly badged as `[EDUCATIONAL WALKTHROUGH — NOT LIVE SCAN]`.
+
+### Scenario B: Technical Judge Asks About Real Malware
+**Question:** *"Did you test this against live LockBit or WannaCry?"*
+**Approved Answer:**
+> *"No, and that is a deliberate ethical and engineering constraint. Executing live ransomware on unsegmented hardware violates university safety protocols. Instead, SentinelML uses a dual validation strategy:
+> 1. An automated behavioral simulator that reproduces observable ransomware artifacts (burst entropy, rapid renaming, extortion notes) in disposable sandboxes.
+> 2. A 40-sample benchmark suite achieving 100% accuracy on evaluated synthetic test distributions.
+>
+> In our technical limitations report, we explicitly state that the legacy model is an experimental synthetic baseline unvalidated against wild polymorphic ransomware. We have designed Schema V2 and an empirical benign collector to establish defensible ground truth for future training."*
+
+### Scenario C: Visitor Inquires About False Positives
+**Question:** *"What happens if I zip a large folder of photos?"*
+**Approved Answer:**
+> *"We explicitly test this in Tab C under Scenario 3 ('Benign Bulk File Operations'). Normal bulk document operations remain SAFE (p < 0.20). While archive compression creates high-entropy files, the absence of suspicious process commands (vssadmin, bcdedit) and ransom note patterns prevents the model from crossing the critical escalation threshold."*
+
+---
+
+## 3. Concurrency Protection & Safety Features
+
+1. **Threading Lock (`_demo_lock`)**: If a visitor rapidly double-clicks `▶ Run Safe Demo`, the system rejects the second invocation with an alert (`System Busy`), preventing file race conditions.
+2. **Path Traversal Protection**: Every file access is validated via `validate_path_safety()`. Any attempt to escape `temp_sandbox/` raises a `SecurityError` and halts execution.
+3. **Automated Sandbox Purge**: `reset_sandbox()` deletes all generated dummy files upon clicking `Reset to Ready` or when tests conclude.
