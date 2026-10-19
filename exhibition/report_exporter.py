@@ -49,7 +49,9 @@ class ExhibitionReportExporter:
         evidence_events: List[Dict[str, Any]],
         scanned_stats: Optional[Dict[str, Any]] = None,
         errors: Optional[List[str]] = None,
-        notes: str = ""
+        notes: str = "",
+        ground_truth_label: Optional[str] = None,
+        score_interpretation: Optional[str] = None
     ) -> Dict[str, Path]:
         """
         Export both Markdown and JSON reports.
@@ -75,13 +77,21 @@ class ExhibitionReportExporter:
             for k, v in features.items():
                 sanitized_features[k] = round(float(v), 4)
 
+        sem_interp = score_interpretation or (
+            "Fraction of positive voting trees in 100-estimator Random Forest (p in [0, 1]). "
+            "< 0.50 is classified as SAFE; 0.50 <= p < 0.90 is WARNING; >= 0.90 is CRITICAL."
+        )
+
         report_data = {
             "report_id": base_filename,
-            "generated_at": datetime.now().isoformat(),
+            "test_timestamp": datetime.now().isoformat(),
+            "scenario": mode_title,
             "demonstration_mode": mode_title,
+            "ground_truth_label": ground_truth_label or "UNSPECIFIED",
             "scan_state": scan_state,
             "ml_prediction": ml_prediction or "N/A",
             "score_semantics": "Fraction of positive voting trees in 100-estimator Random Forest (p in [0, 1])",
+            "score_interpretation": sem_interp,
             "malicious_probability": round(probability, 4) if probability is not None else None,
             "elapsed_seconds": round(duration_s, 3),
             "telemetry_stats": scanned_stats or {},
@@ -119,15 +129,17 @@ class ExhibitionReportExporter:
         lines = [
             "# SENTINELML V2 — EXHIBITION DEMONSTRATION & AUDIT REPORT",
             f"**Report ID:** `{data['report_id']}`  ",
-            f"**Generated:** {data['generated_at']}  ",
-            f"**Demonstration Mode:** {data['demonstration_mode']}  ",
+            f"**Test Timestamp:** `{data.get('test_timestamp', '')}`  ",
+            f"**Scenario:** `{data.get('scenario', data.get('demonstration_mode', ''))}`  ",
+            f"**Ground-Truth Label:** `{data.get('ground_truth_label', 'UNSPECIFIED')}`  ",
             "",
             "---",
             "",
             "## 1. Executive Summary",
             f"- **Final Scan State:** `{data['scan_state']}`",
             f"- **Model Threat Level:** `{data['ml_prediction']}`",
-            f"- **Raw Threat Score:** `{data['malicious_probability']}` ({data['score_semantics']})",
+            f"- **Raw Threat Score:** `{data['malicious_probability']}`",
+            f"- **Score Interpretation:** {data.get('score_interpretation', data.get('score_semantics', ''))}",
             f"- **Execution Duration:** `{data['elapsed_seconds']} s`",
             "",
             "> **Safety Disclaimer:**  ",

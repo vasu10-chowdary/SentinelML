@@ -182,6 +182,90 @@ class TestModelPipelineIntegrity(unittest.TestCase):
         self.assertGreaterEqual(prob, 0.0)
         self.assertLessEqual(prob, 1.0)
 
+    def test_feature_order_integrity(self):
+        """Verify exact feature ordering expected by the trained StandardScaler."""
+        import joblib
+        from utils.paths import get_models_dir
+        scaler = joblib.load(get_models_dir() / "scaler.pkl")
+        self.assertTrue(hasattr(scaler, "feature_names_in_"))
+        self.assertEqual(list(FEATURE_NAMES), list(scaler.feature_names_in_))
+
+    def test_missing_telemetry_handling(self):
+        """Verify handling of None, truncated, or wrong-dimension feature arrays."""
+        predictor = MLPredictor()
+        predictor.load_model()
+        self.assertIsNone(predictor.predict(None))
+        self.assertIsNone(predictor.predict(np.zeros((1, 10))))   # Truncated
+        self.assertIsNone(predictor.predict(np.zeros((1, 25))))   # Extra features
+        self.assertIsNone(predictor.predict(np.zeros((2, 19))))   # Wrong batch dimension
+
+    def test_classification_threshold_logic(self):
+        """Verify deterministic classification threshold mapping."""
+        predictor = MLPredictor()
+        predictor.load_model()
+        self.assertEqual(predictor._classify(0.00), "SAFE")
+        self.assertEqual(predictor._classify(0.49), "SAFE")
+        self.assertEqual(predictor._classify(0.50), "WARNING")
+        self.assertEqual(predictor._classify(0.89), "WARNING")
+        self.assertEqual(predictor._classify(0.90), "CRITICAL")
+        self.assertEqual(predictor._classify(1.00), "CRITICAL")
+
+
+class TestFailureHandlingAndAdvisoryDecoupling(unittest.TestCase):
+    """Verify state invariants and advisory decoupling."""
+
+    def test_scan_incomplete_never_safe(self):
+        """Incomplete or failed scans must NEVER be treated as successful or SAFE."""
+        res_incomplete = ScanResult(scan_type=ScanType.QUICK, state=ScanState.SCAN_INCOMPLETE)
+        self.assertFalse(res_incomplete.was_successful())
+
+        res_error = ScanResult(scan_type=ScanType.QUICK, state=ScanState.ANALYSIS_ERROR)
+        self.assertFalse(res_error.was_successful())
+
+        res_crit_error = ScanResult(scan_type=ScanType.QUICK, state=ScanState.ERROR)
+        self.assertFalse(res_crit_error.was_successful())
+
+    def test_sentinel_ai_advisory_decoupling(self):
+        """Confirm SentinelAI has zero override privileges over ScanResult or MLPredictor."""
+        from ai.sentinel_ai import SentinelAI
+        ai = SentinelAI({"enabled": False})
+        # Verify SentinelAI does not have methods to mutate scan results or model weights
+        self.assertFalse(hasattr(ai, "set_threat_level"))
+        self.assertFalse(hasattr(ai, "override_decision"))
+        self.assertFalse(hasattr(ai, "set_classification"))
+
+    def test_results_export_schema_fields(self):
+        """Verify all exhibition audit fields are captured in report export."""
+        import json
+        exporter = ExhibitionReportExporter()
+        paths = exporter.export_report(
+            mode_title="Scenario Verification",
+            scan_state="SAFE",
+            ml_prediction="SAFE",
+            probability=0.12,
+            duration_s=3.14,
+            features={"total_processes": 150.0, "avg_entropy": 4.1},
+            evidence_events=[{"timestamp": "10:00:00", "phase": "AUDIT", "action": "INSPECT", "details": "Verified"}],
+            ground_truth_label="BENIGN",
+            score_interpretation="Score represents 12% positive voting estimators in Random Forest."
+        )
+
+        with open(paths["json"], "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.assertEqual(data["scenario"], "Scenario Verification")
+        self.assertEqual(data["ground_truth_label"], "BENIGN")
+        self.assertEqual(data["scan_state"], "SAFE")
+        self.assertEqual(data["ml_prediction"], "SAFE")
+        self.assertEqual(data["malicious_probability"], 0.12)
+        self.assertIn("score_interpretation", data)
+        self.assertIn("extracted_features", data)
+        self.assertIn("test_timestamp", data)
+
+        # Cleanup
+        paths["json"].unlink(missing_ok=True)
+        paths["md"].unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

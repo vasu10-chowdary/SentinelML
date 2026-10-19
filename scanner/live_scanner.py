@@ -326,7 +326,8 @@ class LiveScanner:
                 name = (p.info.get("name") or "").lower()
                 if name in system_procs:
                     continue
-                if (p.info.get("num_handles") or 0) if sys.platform == "win32" else 0 > 500:
+                handles = (p.info.get("num_handles") or 0) if sys.platform == "win32" else 0
+                if handles > 500:
                     count += 1
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
@@ -393,7 +394,8 @@ class LiveScanner:
                 name = (p.info.get("name") or "").lower()
                 if name in system_procs:
                     continue
-                if (p.info.get("num_handles") or 0) if sys.platform == "win32" else 0 > 2000:
+                handles = (p.info.get("num_handles") or 0) if sys.platform == "win32" else 0
+                if handles > 2000:
                     count += 1
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
