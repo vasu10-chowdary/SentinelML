@@ -463,6 +463,10 @@ class ScanEngine:
         log.info("Scan cancellation requested")
         self._cancel_requested = True
         self._filesystem_scanner.cancel()
+
+    def cancel_scan(self) -> None:
+        """Alias for cancel()."""
+        self.cancel()
     
     def get_state(self) -> ScanState:
         """Get current scan state."""

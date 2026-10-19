@@ -329,6 +329,8 @@ class MainWindow(ctk.CTk):
 
             ("dashboard",     "Dashboard",    "[ * ]"),
 
+            ("exhibition",    "Exhibition",   "[ EX ]"),
+
             ("threats",       "Threat Log",   "[ ! ]"),
 
             ("sentinel_ai",   "SentinelAI",   "[ AI ]"),
@@ -400,8 +402,10 @@ class MainWindow(ctk.CTk):
     def _build_pages(self) -> None:
         """Register page classes for lazy loading."""
         from gui.pages.sentinel_ai_page import SentinelAIPage
+        from gui.pages.exhibition_page import ExhibitionPage
         self._page_classes = {
             "dashboard":     DashboardPage,
+            "exhibition":    ExhibitionPage,
             "threats":       ThreatsPage,
             "sentinel_ai":   SentinelAIPage,
             "ransomware":    RansomwarePage,
