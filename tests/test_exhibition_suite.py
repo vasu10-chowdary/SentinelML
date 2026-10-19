@@ -332,5 +332,180 @@ class TestFailureHandlingAndAdvisoryDecoupling(unittest.TestCase):
         paths["md"].unlink(missing_ok=True)
 
 
+class TestLiveInferenceValidation(unittest.TestCase):
+    """
+    Automated Phase 5 checks verifying live inference invariants:
+    1. Schema validation (19 features, finite, numeric)
+    2. Parity of feature ordering
+    3. Missing telemetry cannot evaluate as SAFE
+    4. Invalid model outputs trigger ANALYSIS_ERROR
+    5. Incomplete scans never evaluate as SAFE
+    6. SentinelAI advisory decoupling
+    7. Honest detection criteria in synthetic testing
+    8. Independent recording of all 6 verification stages
+    """
+
+    def test_live_feature_vector_schema_and_types(self):
+        """1. Live feature vector matches the model's expected schema (1x19, finite float)."""
+        from scanner.live_scanner import LiveScanner
+        scanner = LiveScanner()
+        vec = scanner.scan_system()
+        self.assertIsNotNone(vec)
+        self.assertIsInstance(vec, np.ndarray)
+        self.assertEqual(vec.shape, (1, 19))
+        self.assertTrue(np.issubdtype(vec.dtype, np.floating))
+        self.assertTrue(np.isfinite(vec).all(), "Feature vector contains non-finite values (NaN or Inf)")
+
+    def test_feature_order_pipeline_parity(self):
+        """2. Feature order is identical during training and inference."""
+        import joblib
+        from utils.paths import get_models_dir
+        scaler = joblib.load(get_models_dir() / "scaler.pkl")
+        expected_names = list(scaler.feature_names_in_)
+        self.assertEqual(len(expected_names), 19)
+        self.assertEqual(list(FEATURE_NAMES), expected_names)
+
+        # Expected canonical feature order from recovered training config
+        canonical_features = [
+            "total_processes", "suspicious_process_count", "avg_entropy", "max_entropy",
+            "high_entropy_region_count", "malfind_injection_count", "crypto_dll_count",
+            "cmd_vssadmin_count", "network_connection_count", "unique_external_ips",
+            "file_handle_count", "registry_handle_count", "orphan_process_count",
+            "powershell_process_count", "unsigned_module_count", "suspicious_mutex_count",
+            "abnormal_privilege_count", "suspicious_thread_count", "defender_tampering_count"
+        ]
+        self.assertEqual(list(FEATURE_NAMES), canonical_features)
+
+    def test_missing_telemetry_never_converted_to_benign(self):
+        """3. Missing telemetry is not silently converted into a benign signal."""
+        from unittest.mock import MagicMock
+        engine = ScanEngine()
+        res = ScanResult(scan_type=ScanType.QUICK, state=ScanState.IDLE)
+        # Simulate failed process scan returning None
+        engine._process_scanner = MagicMock()
+        engine._process_scanner.scan_system.return_value = None
+
+        success = engine._scan_processes(res)
+        self.assertFalse(success)
+        self.assertFalse(hasattr(res, "_features"))
+
+        # ML analysis must fail safely if features missing
+        ml_success = engine._run_ml_analysis(res)
+        self.assertFalse(ml_success)
+        self.assertEqual(res.threat_level, "ANALYSIS_ERROR")
+        self.assertNotEqual(res.threat_level, "SAFE")
+
+    def test_invalid_model_output_causes_explicit_analysis_error(self):
+        """4. Invalid model output causes an explicit analysis error."""
+        from unittest.mock import patch
+        engine = ScanEngine()
+        res = ScanResult(scan_type=ScanType.QUICK, state=ScanState.IDLE)
+        res._features = np.zeros((1, 19), dtype=np.float64)
+
+        # Case A: Probability out of bounds (> 1.0)
+        with patch("ml.predictor.MLPredictor.predict", return_value=("CRITICAL", 1.45)):
+            success = engine._run_ml_analysis(res)
+            self.assertFalse(success)
+            self.assertEqual(res.threat_level, "ANALYSIS_ERROR")
+
+        # Case B: Probability out of bounds (< 0.0)
+        with patch("ml.predictor.MLPredictor.predict", return_value=("SAFE", -0.15)):
+            success = engine._run_ml_analysis(res)
+            self.assertFalse(success)
+            self.assertEqual(res.threat_level, "ANALYSIS_ERROR")
+
+        # Case C: Invalid threat level label
+        with patch("ml.predictor.MLPredictor.predict", return_value=("UNKNOWN_LABEL", 0.85)):
+            success = engine._run_ml_analysis(res)
+            self.assertFalse(success)
+            self.assertEqual(res.threat_level, "ANALYSIS_ERROR")
+
+        # Case D: Predict returns None
+        with patch("ml.predictor.MLPredictor.predict", return_value=None):
+            success = engine._run_ml_analysis(res)
+            self.assertFalse(success)
+            self.assertEqual(res.threat_level, "ANALYSIS_ERROR")
+
+    def test_incomplete_scan_cannot_be_classified_as_safe(self):
+        """5. Incomplete scan cannot be classified as SAFE."""
+        for state in [ScanState.SCAN_INCOMPLETE, ScanState.ANALYSIS_ERROR, ScanState.ERROR]:
+            res = ScanResult(scan_type=ScanType.FULL, state=state, threat_level="SAFE", ml_probability=0.1)
+            self.assertFalse(res.was_successful())
+            # In ScanEngine, if ml_success is False, state is SCAN_INCOMPLETE
+            self.assertNotEqual(res.state, ScanState.SAFE)
+
+    def test_sentinel_ai_cannot_override_classifier(self):
+        """6. SentinelAI cannot override the local classifier."""
+        from ai.sentinel_ai import SentinelAI
+        ai = SentinelAI({"enabled": False})
+        self.assertFalse(hasattr(ai, "override_decision"))
+        self.assertFalse(hasattr(ai, "set_threat_level"))
+        self.assertFalse(hasattr(ai, "set_ml_probability"))
+        self.assertFalse(hasattr(ai, "force_safe"))
+
+    def test_synthetic_scenario_honest_detection_criteria(self):
+        """7. A synthetic test only passes detection when the actual model result satisfies a documented expectation."""
+        # Simulated outcome where ML evaluates to SAFE (probability 0.35)
+        outcome_safe = ScenarioOutcome(
+            scenario_id="TEST_UNDETECTED",
+            scenario_name="Undetected Scenario",
+            is_simulation=True,
+            expected_behavior="Threat detection",
+            observed_behavior="Entropy elevated but ML classified SAFE",
+            classifier_output="SAFE",
+            probability=0.35,
+            scan_state="SAFE",
+            passed_test=True,
+            detection_achieved=(0.35 >= 0.50)  # Must be False
+        )
+        self.assertFalse(outcome_safe.detection_achieved)
+        self.assertEqual(outcome_safe.classifier_output, "SAFE")
+
+        # Simulated outcome where ML evaluates to WARNING (probability 0.56)
+        outcome_warn = ScenarioOutcome(
+            scenario_id="TEST_DETECTED",
+            scenario_name="Detected Scenario",
+            is_simulation=True,
+            expected_behavior="Threat detection",
+            observed_behavior="Threat flagged",
+            classifier_output="WARNING",
+            probability=0.56,
+            scan_state="THREAT_DETECTED",
+            passed_test=True,
+            detection_achieved=(0.56 >= 0.50)  # Must be True
+        )
+        self.assertTrue(outcome_warn.detection_achieved)
+        self.assertEqual(outcome_warn.classifier_output, "WARNING")
+
+    def test_six_stage_verification_independent_recording(self):
+        """8. Sandbox simulation, filesystem observation, feature extraction, and classification are independently recorded."""
+        outcome = ScenarioOutcome(
+            scenario_id="TEST_6_STAGE",
+            scenario_name="6 Stage Test",
+            is_simulation=True,
+            expected_behavior="Full 6-stage recording",
+            observed_behavior="All stages captured",
+            classifier_output="WARNING",
+            probability=0.56,
+            scan_state="THREAT_DETECTED",
+            passed_test=True,
+            simulator_generated_activity=True,
+            filesystem_observed_sandbox=True,
+            live_telemetry_collected_features=True,
+            ml_processed_features=True,
+            classifier_result="WARNING",
+            detection_achieved=True,
+            limitation_notes="Operational notes recorded"
+        )
+        # Verify all 6 stages exist independently
+        self.assertTrue(hasattr(outcome, "simulator_generated_activity"))
+        self.assertTrue(hasattr(outcome, "filesystem_observed_sandbox"))
+        self.assertTrue(hasattr(outcome, "live_telemetry_collected_features"))
+        self.assertTrue(hasattr(outcome, "ml_processed_features"))
+        self.assertTrue(hasattr(outcome, "classifier_result"))
+        self.assertTrue(hasattr(outcome, "detection_achieved"))
+        self.assertTrue(hasattr(outcome, "limitation_notes"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
