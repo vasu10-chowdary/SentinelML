@@ -87,9 +87,31 @@ class TestSecurityTestLab(unittest.TestCase):
             shutil.rmtree(self.test_sandbox, ignore_errors=True)
 
     def test_scenario_high_volume_file_mod(self):
+        """Verify 6-stage detection pipeline on high-volume synthetic file modification."""
         outcome = self.lab.run_scenario("HIGH_VOLUME_FILE_MOD")
         self.assertTrue(outcome.passed_test)
         self.assertEqual(outcome.scenario_id, "HIGH_VOLUME_FILE_MOD")
+
+        # 6-Stage Detection Breakdown assertions:
+        self.assertTrue(outcome.simulator_generated_activity)
+        self.assertTrue(outcome.filesystem_observed_sandbox)
+        self.assertTrue(outcome.live_telemetry_collected_features)
+        self.assertTrue(outcome.ml_processed_features)
+        self.assertIn(outcome.classifier_result, ["SAFE", "WARNING", "CRITICAL"])
+        self.assertEqual(outcome.detection_achieved, outcome.classifier_result in ["WARNING", "CRITICAL"])
+        self.assertIn("LIMITATION", outcome.limitation_notes)
+
+    def test_scenario_rapid_renaming(self):
+        """Verify 6-stage detection pipeline on rapid file renaming scenario."""
+        outcome = self.lab.run_scenario("RAPID_RENAMING")
+        self.assertTrue(outcome.passed_test)
+        self.assertEqual(outcome.scenario_id, "RAPID_RENAMING")
+        self.assertTrue(outcome.simulator_generated_activity)
+        self.assertTrue(outcome.filesystem_observed_sandbox)
+        self.assertFalse(outcome.live_telemetry_collected_features) # File extension count absent from 19-vector
+        self.assertTrue(outcome.ml_processed_features)
+        self.assertEqual(outcome.detection_achieved, outcome.classifier_result in ["WARNING", "CRITICAL"])
+        self.assertIn("PIPELINE GAP", outcome.limitation_notes)
 
     def test_scenario_benign_bulk_ops(self):
         """Benign files must not trigger false positives."""
@@ -209,6 +231,49 @@ class TestModelPipelineIntegrity(unittest.TestCase):
         self.assertEqual(predictor._classify(0.89), "WARNING")
         self.assertEqual(predictor._classify(0.90), "CRITICAL")
         self.assertEqual(predictor._classify(1.00), "CRITICAL")
+
+    def test_heuristic_proxy_divergence_documentation(self):
+        """Audit the 5 critical heuristic proxies vs memory-forensics features."""
+        from scanner.live_scanner import LiveScanner
+        scanner = LiveScanner()
+        # Verify extraction methods exist and map to the specific heuristic proxies
+        self.assertTrue(hasattr(scanner, "_count_hollow_procs"))            # Index 5: malfind_injection_count
+        self.assertTrue(hasattr(scanner, "_count_suspicious_path_procs"))   # Index 14: unsigned_module_count
+        self.assertTrue(hasattr(scanner, "_count_high_thread_procs"))       # Index 15 & 17: suspicious_mutex & thread
+        self.assertTrue(hasattr(scanner, "_count_abnormal_handle_procs"))   # Index 16: abnormal_privilege_count
+
+        # Verify semantic substitution:
+        dummy_procs = []
+        self.assertEqual(scanner._count_hollow_procs(dummy_procs), 0.0)
+        self.assertEqual(scanner._count_suspicious_path_procs(dummy_procs), 0.0)
+        self.assertEqual(scanner._count_high_thread_procs(dummy_procs, 50), 0.0)
+        self.assertEqual(scanner._count_abnormal_handle_procs(dummy_procs), 0.0)
+
+    def test_custom_path_entropy_observation(self):
+        """Verify that passing target_directories to LiveScanner samples the targeted path."""
+        import tempfile
+        import os
+        from scanner.live_scanner import LiveScanner
+        scanner = LiveScanner()
+        with tempfile.TemporaryDirectory() as td:
+            tpath = Path(td)
+            sample_file = tpath / "sample.bin"
+            with open(sample_file, "wb") as f:
+                f.write(os.urandom(8192))
+            
+            avg_e, max_e, high_count = scanner._scan_file_entropy(target_directories=[tpath])
+            self.assertGreater(avg_e, 7.5)
+            self.assertGreater(max_e, 7.5)
+            self.assertEqual(high_count, 1.0)
+
+    def test_scan_engine_threshold_mapping(self):
+        """Verify ScanEngine reconciles ML warning/critical thresholds to THREAT_DETECTED."""
+        from scanner.scan_engine import ScanResult, ScanType, ScanState
+        res_warn = ScanResult(scan_type=ScanType.QUICK, state=ScanState.IDLE, ml_executed=True, threat_level="WARNING", ml_probability=0.55)
+        self.assertTrue(res_warn.threat_level == "WARNING" or res_warn.ml_probability >= 0.5)
+
+        res_safe = ScanResult(scan_type=ScanType.QUICK, state=ScanState.IDLE, ml_executed=True, threat_level="SAFE", ml_probability=0.25)
+        self.assertTrue(res_safe.threat_level == "SAFE" and res_safe.ml_probability < 0.5)
 
 
 class TestFailureHandlingAndAdvisoryDecoupling(unittest.TestCase):

@@ -112,8 +112,14 @@ class LiveScanner:
         self._errors_encountered: int = 0
         self._feature_values: Dict[str, float] = {}
 
-    def scan_system(self) -> Optional[np.ndarray]:
-        """Perform live system scan. Returns (1,19) array or None on failure."""
+    def scan_system(self, target_directories: Optional[List[Path]] = None) -> Optional[np.ndarray]:
+        """
+        Perform live system scan. Returns (1,19) array or None on failure.
+        
+        Args:
+            target_directories: Optional specific directory paths to sample for filesystem entropy.
+                                If None, defaults to platform monitored user directories.
+        """
         log.info("Starting live behavioral scan...")
         self._scan_start_time = time.time()
         self._processes_scanned = 0
@@ -141,7 +147,7 @@ class LiveScanner:
             features = []
             features.append(float(len(procs)))                              # [0]
             features.append(self._count_suspicious_procs(procs))           # [1]
-            avg_e, max_e, high_e = self._scan_file_entropy()
+            avg_e, max_e, high_e = self._scan_file_entropy(target_directories=target_directories)
             features.append(avg_e)                                          # [2]
             features.append(max_e)                                          # [3]
             features.append(high_e)                                         # [4]
@@ -201,12 +207,15 @@ class LiveScanner:
                 self._errors_encountered += 1
         return float(count)
 
-    def _scan_file_entropy(self) -> Tuple[float, float, float]:
+    def _scan_file_entropy(self, target_directories: Optional[List[Path]] = None) -> Tuple[float, float, float]:
         entropies = []
         high_count = 0
         files_sampled = 0
-        from utils.platform_utils import PlatformInfo
-        scan_dirs = PlatformInfo().get_monitored_directories()
+        if target_directories:
+            scan_dirs = [Path(d) for d in target_directories if Path(d).exists()]
+        else:
+            from utils.platform_utils import PlatformInfo
+            scan_dirs = PlatformInfo().get_monitored_directories()
         
         for scan_dir in scan_dirs:
             if not scan_dir.exists():

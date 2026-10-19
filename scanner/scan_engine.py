@@ -163,7 +163,7 @@ class ScanEngine:
                     return result
             
             # Phase 2: Process scanning
-            process_success = self._scan_processes(result)
+            process_success = self._scan_processes(result, target_directories=scan_paths if scan_type == ScanType.CUSTOM else None)
             
             if self._cancel_requested:
                 result.cancelled = True
@@ -341,13 +341,14 @@ class ScanEngine:
             result.filesystem_errors += 1
             return False
     
-    def _scan_processes(self, result: ScanResult) -> bool:
+    def _scan_processes(self, result: ScanResult, target_directories: Optional[List[Path]] = None) -> bool:
         log.info(f"LIVE_PROCESS_SCAN_START")
         """
         Perform process scanning and extract behavioral features.
         
         Args:
             result: ScanResult to update
+            target_directories: Optional custom paths to sample for filesystem entropy
         
         Returns:
             True if successful, False if failed
@@ -356,7 +357,7 @@ class ScanEngine:
             log.info("Process scanning...")
             
             # Extract features using live scanner
-            features = self._process_scanner.scan_system()
+            features = self._process_scanner.scan_system(target_directories=target_directories)
             
             if features is None:
                 log.error("Process scanning failed")
