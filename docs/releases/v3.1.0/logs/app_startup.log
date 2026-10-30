@@ -1,0 +1,40 @@
+11:27:09 [INFO] sentinel.logging — Logging configured. Log file: /home/kali/SentinelML/logs/app.log
+11:27:09 [INFO] sentinel.main — ============================================================
+11:27:09 [INFO] sentinel.main — SentinelML V2 starting. frozen=False  argv=['app.py']
+11:27:09 [INFO] sentinel.platform — Initialized platform adapter: linux (Linux)
+11:27:17 [INFO] sentinel.main — Creating MainWindow (show_animation=True)...
+11:27:19 [INFO] sentinel.config — No config file found — using defaults.
+11:27:19 [INFO] gui.main_window — Config loaded. setup_done=False
+11:27:22 [INFO] gui.main_window — MainWindow: launching inline cinematic startup sequence
+11:27:22 [INFO] sentinel.startup_animation — Startup animation started (target duration: 5000 ms).
+11:27:22 [INFO] gui.main_window — MainWindow ready. Entering mainloop.
+11:27:22 [INFO] sentinel.main — MainWindow created — entering mainloop.
+11:27:23 [INFO] gui.main_window — Starting background services asynchronously...
+11:27:23 [INFO] sentinel.ml — Loading ML model from: /home/kali/SentinelML/models/saved_model.pkl
+11:27:27 [INFO] gui.main_window — Startup animation finished — presenting dashboard in READY TO SCAN state.
+11:27:27 [INFO] gui.main_window — Instantiating page: dashboard
+11:27:37 [INFO] sentinel.gui — Dashboard page constructed.
+11:27:37 [INFO] gui.main_window — Dashboard geometry/layout completed.
+11:27:38 [INFO] numexpr.utils — NumExpr defaulting to 3 threads.
+11:27:41 [INFO] sentinel.ml — ML pipeline loaded successfully (critical=0.90, warning=0.50)
+11:27:41 [INFO] gui.main_window — ML Model preloaded successfully.
+11:27:41 [INFO] sentinel.guard — Starting SentinelML Background Guard...
+11:27:41 [INFO] sentinel.guard — Monitoring 8 locations:
+11:27:41 [INFO] sentinel.guard —   - /home/kali/Documents
+11:27:41 [INFO] sentinel.guard —   - /home/kali/Desktop
+11:27:41 [INFO] sentinel.guard —   - /home/kali/Downloads
+11:27:41 [INFO] sentinel.guard —   - /home/kali/Pictures
+11:27:41 [INFO] sentinel.guard —   - /home/kali/Videos
+11:27:41 [INFO] sentinel.guard —   - /home/kali/Music
+11:27:41 [INFO] sentinel.guard —   - /home/kali/Public
+11:27:41 [INFO] sentinel.guard —   - /home/kali/Templates
+11:27:41 [INFO] sentinel.guard — Monitor loop started
+11:27:41 [INFO] sentinel.guard — Background Guard started successfully
+11:27:41 [INFO] gui.main_window — Background Guard started successfully.
+11:27:41 [INFO] sentinel.startup_animation — Startup animation completed.
+11:27:41 [INFO] sentinel.startup_animation — Dashboard visible after animation cleanup.
+11:27:43 [INFO] sentinel.livemon.monitor — SOC monitor started (interval=60s)
+11:27:43 [INFO] sentinel.gui — Live SOC monitoring started (interval=60s)
+11:27:44 [INFO] sentinel.gui — Pre-warming ScanVisualizer in background...
+11:27:46 [INFO] sentinel.gui — ScanVisualizer pre-warmed and ready.
+11:27:49 [INFO] sentinel.gui — ScanVisualizer opened from pre-warmed cache.

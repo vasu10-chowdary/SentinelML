@@ -117,6 +117,8 @@ class Dashboard3DCore(tk.Canvas):
             s = "THREAT DETECTED"
         elif s in ("CANCELLED", "SCAN_INCOMPLETE", "INCOMPLETE"):
             s = "SCAN_INCOMPLETE"
+        elif s in ("INCONCLUSIVE", "LIMITED_COVERAGE"):
+            s = "INCONCLUSIVE"
         elif s in ("ERROR", "ANALYSIS_ERROR"):
             s = "ANALYSIS_ERROR"
 
@@ -151,7 +153,7 @@ class Dashboard3DCore(tk.Canvas):
         self.processes_analyzed = procs
         if stage:
             self.current_stage = stage
-        if self.state not in ("SAFE", "WARNING", "THREAT DETECTED", "SCAN_INCOMPLETE", "ANALYSIS_ERROR"):
+        if self.state not in ("SAFE", "WARNING", "THREAT DETECTED", "SCAN_INCOMPLETE", "INCONCLUSIVE", "ANALYSIS_ERROR"):
             self.state = "SCANNING"
 
     def update_data(self, scan_result) -> None:
@@ -224,6 +226,12 @@ class Dashboard3DCore(tk.Canvas):
                 status_title = "SCAN CANCELLED"
                 status_sub = "PARTIAL RESULTS DISCARDED"
                 rot_speed = 0.2
+                sweep_speed = 0.0
+            elif self.state == "INCONCLUSIVE":
+                theme_color = "#ffab00"
+                status_title = "INCONCLUSIVE // LIMITED TELEMETRY"
+                status_sub = "NOT CERTIFIED SAFE \u2022 SENSOR COVERAGE INCOMPLETE"
+                rot_speed = 0.3
                 sweep_speed = 0.0
             else:  # ANALYSIS_ERROR
                 theme_color = "#d29922"

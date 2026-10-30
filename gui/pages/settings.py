@@ -459,7 +459,7 @@ class SettingsPage(ctk.CTkFrame):
         from constants import APP_VERSION
         ctk.CTkLabel(
             about_card,
-            text=f"SentinelML V2  \u00b7  Version {APP_VERSION}\n"
+            text=f"SentinelML  \u00b7  Version {APP_VERSION}\n"
                  "Memory-Forensics-Based Ransomware Detection\n"
                  "Python  \u00b7  CustomTkinter  \u00b7  scikit-learn",
             font=ctk.CTkFont(size=12),

@@ -1,0 +1,68 @@
+........................................................................ [ 20%]
+..............................................ss........................ [ 40%]
+........................................................................ [ 60%]
+........................................................................ [ 80%]
+..................s.....................F..............................  [100%]
+================================== FAILURES ===================================
+_ TestUnifiedDashboardRegression.test_dashboard_3d_core_live_state_transitions _
+
+self = <test_unified_dashboard.TestUnifiedDashboardRegression testMethod=test_dashboard_3d_core_live_state_transitions>
+
+    def test_dashboard_3d_core_live_state_transitions(self):
+        """Verify 3D Sentinel Core canvas is present on Dashboard and reacts accurately to scan states."""
+        import customtkinter as ctk
+        from gui.pages.dashboard import DashboardPage
+>       root = ctk.CTk()
+               ^^^^^^^^^
+
+tests\test_unified_dashboard.py:924: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Roaming\Python\Python314\site-packages\customtkinter\windows\ctk_tk.py:40: in __init__
+    CTK_PARENT_CLASS.__init__(self, **pop_from_dict_by_set(kwargs, self._valid_tk_constructor_arguments))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <customtkinter.windows.ctk_tk.CTk object .>, screenName = None
+baseName = '__main__', className = 'Tk', useTk = True, sync = False, use = None
+
+    def __init__(self, screenName=None, baseName=None, className='Tk',
+                 useTk=True, sync=False, use=None):
+        """Return a new top level widget on screen SCREENNAME. A new Tcl interpreter will
+        be created. BASENAME will be used for the identification of the profile file (see
+        readprofile).
+        It is constructed from sys.argv[0] without extensions if None is given. CLASSNAME
+        is the name of the widget class."""
+        self.master = None
+        self.children = {}
+        self._tkloaded = False
+        # to avoid recursions in the getattr code in case of failure, we
+        # ensure that self.tk is always _something_.
+        self.tk = None
+        if baseName is None:
+            import os
+            baseName = os.path.basename(sys.argv[0])
+            baseName, ext = os.path.splitext(baseName)
+            if ext not in ('.py', '.pyc'):
+                baseName = baseName + ext
+        interactive = False
+>       self.tk = _tkinter.create(screenName, baseName, className, interactive, wantobjects, useTk, sync, use)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       _tkinter.TclError: invalid command name "tcl_findLibrary"
+
+C:\Program Files\Python314\Lib\tkinter\__init__.py:2484: TclError
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_lbs1_inotify.py:134: inotify requires Linux
+SKIPPED [1] tests\test_lbs1_inotify.py:148: inotify requires Linux
+SKIPPED [1] tests\test_scan_audit.py:310: Tk unavailable: Can't find a usable init.tcl in the following directories: 
+    {C:\Program Files\Python314\tcl\tcl8.6}
+
+C:/Program Files/Python314/tcl/tcl8.6/init.tcl: couldn't read file "C:/Program Files/Python314/tcl/tcl8.6/init.tcl": No error
+couldn't read file "C:/Program Files/Python314/tcl/tcl8.6/init.tcl": No error
+    while executing
+"source {C:/Program Files/Python314/tcl/tcl8.6/init.tcl}"
+    ("uplevel" body line 1)
+    invoked from within
+"uplevel #0 [list source $tclfile]"
+
+
+This probably means that Tcl wasn't installed properly.
+1 failed, 355 passed, 3 skipped in 194.72s (0:03:14)
