@@ -1,0 +1,49 @@
+SentinelML — Final Kali Linux Demonstration Audit
+Environment record (captured 2026-10-30, guest time 11:37 EDT)
+
+HOST
+  OS............ Windows 10.0.26300 (x64), Git Bash / MSYS
+  Hypervisor.... Oracle VirtualBox 7.1.12r169651
+  VM............ kali-linux-2026.1-virtualbox-amd64 (headless)
+  Host clock.... IST (UTC+5:30); guest clock EDT (UTC-4) — see SOC data-quality report
+  Canonical tree C:\Users\<user>\Desktop\SentinalMl
+  Note.......... All scans, tests and hash checks in this audit were run against the
+                 canonical Windows tree and the Kali guest tree derived from it.
+
+GUEST (Kali)
+  OS............ Kali GNU/Linux Rolling, VERSION_ID=2026.1 (kali-rolling)
+  Kernel........ 6.18.12+kali-amd64 #1 SMP PREEMPT_DYNAMIC (2026-02-25) x86_64
+  Python........ 3.13.12 (system /usr/bin/python3 and venv)
+  Virtualenv.... /home/kali/lbs1_audit/venv (isolated; no global installs)
+  Tk............ 8.6
+  Packages...... customtkinter 6.0.0, darkdetect 0.8.0, numpy 2.3.5, pandas 2.3.3,
+                 pillow 12.0.0, psutil 7.1.0, requests 2.32.5, scikit-learn 1.8.0,
+                 scipy 1.18.1, joblib 1.5.2, pytest 9.0.2, pyinstaller 6.18.0
+  Display....... Xvfb :99 -screen 0 1600x1000x24 (headless)
+  Capture....... ImageMagick import/convert; X automation via xdotool (isolated display)
+  App tree...... /home/kali/SentinelML (source synced from Desktop tree; tests/tools/ added)
+
+LAUNCH
+  Xvfb :99 -screen 0 1600x1000x24 &
+  cd /home/kali/SentinelML
+  DISPLAY=:99 /home/kali/lbs1_audit/venv/bin/python app.py > /tmp/app_audit.log 2>&1 &
+  Startup log shows: platform=linux, animation started/finished, dashboard constructed,
+  ML pipeline loaded (critical=0.90, warning=0.50); 0 ERROR / 0 Traceback in log.
+
+TEST INVOCATION
+  cd /home/kali/SentinelML
+  /home/kali/lbs1_audit/venv/bin/python -m pytest -p no:cacheprovider -q \
+      tests/test_lbs1_*.py tests/test_scan_audit.py tests/test_scan_engine_process_only.py
+  GUI audit tests re-run with DISPLAY=:99 (see full_test_log.txt / gui_audit_tests.log).
+
+SCAN FIXTURE
+  /home/kali/lbs1_demo_fixture — harmless, self-created: notes.txt, data.bin, hello.sh
+  No real ransomware, no malicious samples, no destructive commands used.
+
+WINDOWS FROZEN ARTIFACTS
+  Hashes re-verified 2026-10-30 during release preparation — all 9 match the recorded
+  values in frozen_artifacts.sha256 (run `sha256sum -c
+  docs/releases/v3.1.0/frozen_artifacts.sha256` from the repository root):
+    models/saved_model.pkl, models/scaler.pkl, models/metrics.json, ml/predictor.py,
+    scanner/live_scanner.py, scanner/linux_processes.py, scanner/linux_telemetry.py,
+    tests/test_lbs1_processes.py, LINUX_LBS1_IMPLEMENTATION_PLAN.md

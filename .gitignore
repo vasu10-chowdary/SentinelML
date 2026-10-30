@@ -75,3 +75,12 @@ data/dataset_audit_log.jsonl
 reports/SentinelML_Incident_Report_*
 reports/exhibition_demo_*
 reports/file_integrity_*
+
+# ── PLATFORM BUILD OUTPUTS ────────────────────────────────────────────────────
+dist_linux*/
+build_linux*/
+
+# ── RELEASE EVIDENCE — intentionally tracked despite the log rules above ──────
+!docs/releases/v3.1.0/logs/
+!docs/releases/v3.1.0/logs/*.log
+!docs/releases/v3.1.0/logs/*.txt

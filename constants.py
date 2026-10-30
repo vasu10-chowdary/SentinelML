@@ -41,4 +41,4 @@ WINDOW_MIN_H    = 640
 SIDEBAR_W       = 230
 
 # ── App version ──────────────────────────────────────────────────────────
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.1.0"

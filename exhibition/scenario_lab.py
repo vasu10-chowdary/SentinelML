@@ -1118,12 +1118,20 @@ class ScenarioRunner:
         finally:
             cancel_fired.cancel()
 
-        if not cancelled_scan.cancelled and cancelled_scan.state == ScanState.SAFE:
-            # Extremely fast host: the scan outran the cancellation timer.
+        if not cancelled_scan.cancelled and cancelled_scan.state in (
+            ScanState.SAFE, ScanState.INCONCLUSIVE, ScanState.LIMITED_COVERAGE
+        ):
+            # Extremely fast host: the scan outran the cancellation timer. On POSIX
+            # a completed QUICK scan can legitimately be INCONCLUSIVE (Windows-only
+            # sensors unavailable), so any completed non-cancelled state counts.
             cancelled_scan.cancelled = True
             cancelled_scan.state = ScanState.SCAN_INCOMPLETE
             cancelled_scan.threat_level = "CANCELLED"
             cancelled_scan.error_message = "Scan cancelled after completion signal (timing race)"
+            # Clear the INCONCLUSIVE flag so the forced cancellation is reported,
+            # not the completed scan's limited-coverage classification.
+            cancelled_scan.is_inconclusive = False
+            cancelled_scan.inconclusive_reason = ""
             self._emit(
                 CATEGORY_CANCELLATION,
                 "Cancellation applied after scan completion",

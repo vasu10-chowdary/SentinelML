@@ -16,6 +16,7 @@ Professional cybersecurity monitoring and behavioral detection dashboard:
 """
 
 import os
+import sys
 import time
 import datetime
 import threading
@@ -43,6 +44,20 @@ from utils.scan_audit import (
 )
 
 log = get_gui_logger()
+
+
+def _inconclusive_telemetry_notice() -> str:
+    """Completion notice for a genuine ML result with partial platform telemetry."""
+    if sys.platform.startswith("linux"):
+        platform_phrase = "this Linux"
+    elif sys.platform == "darwin":
+        platform_phrase = "this macOS"
+    else:
+        platform_phrase = "this"
+    return (
+        "Analysis completed \u2013 additional telemetry unavailable on "
+        f"{platform_phrase} system."
+    )
 
 
 # Statements that must appear in every exported incident report.
@@ -975,6 +990,24 @@ class DashboardPage(ctk.CTkFrame):
                 self._dispatch_to_main(self._on_scan_cancelled, result, token)
                 return
 
+            # A genuine ML result with partial platform telemetry is a completed
+            # analysis, not a failure. Keep it out of the error path while
+            # preserving was_successful()'s strict SAFE/THREAT-only contract.
+            if (
+                result.state in (ScanState.INCONCLUSIVE, ScanState.LIMITED_COVERAGE)
+                or getattr(result, "is_inconclusive", False)
+            ) and result.ml_executed:
+                self._dispatch_to_main(
+                    self._on_scan_complete,
+                    "INCONCLUSIVE",
+                    result.ml_probability,
+                    result,
+                    False,
+                    None,
+                    token,
+                )
+                return
+
             if not result.was_successful():
                 msg = result.error_message or f"Scan incomplete (state={result.state.value})"
                 self._dispatch_to_main(self._on_scan_error, msg, result, token)
@@ -1077,8 +1110,10 @@ class DashboardPage(ctk.CTkFrame):
             or getattr(scan_result, "is_simulation", False)
             or getattr(scan_result, "scan_origin", "") == "CONTROLLED_SIMULATION"
         )
+        level_u = str(threat_level or "").upper()
+        is_inconclusive = level_u in ("INCONCLUSIVE", "LIMITED_COVERAGE")
 
-        if threat_level not in ("SAFE", "LOW"):
+        if level_u in ("WARNING", "CRITICAL", "THREAT_DETECTED"):
             self._threats_detected += 1
 
         if scan_result is not None:
@@ -1137,9 +1172,21 @@ class DashboardPage(ctk.CTkFrame):
         except Exception:
             pass
         if hasattr(self, "_stage_badge"):
-            self._stage_badge.configure(text="STAGE: COMPLETE \u2014 100%", text_color=C["green"])
+            if is_inconclusive:
+                self._stage_badge.configure(
+                    text="STAGE: COMPLETE \u2014 TELEMETRY LIMITED",
+                    text_color=C["yellow"],
+                )
+            else:
+                self._stage_badge.configure(text="STAGE: COMPLETE \u2014 100%", text_color=C["green"])
         if hasattr(self, "_active_path_label"):
-            self._active_path_label.configure(text="Scan complete. Evidence available.", text_color=C["muted"])
+            if is_inconclusive:
+                self._active_path_label.configure(
+                    text=_inconclusive_telemetry_notice(),
+                    text_color=C["yellow"],
+                )
+            else:
+                self._active_path_label.configure(text="Scan complete. Evidence available.", text_color=C["muted"])
 
         if hasattr(self, "_core_3d") and self._core_3d:
             try:
@@ -2141,13 +2188,62 @@ class DashboardPage(ctk.CTkFrame):
             or getattr(scan_result, "is_inconclusive", False)
             or getattr(scan_result, "state", None) in (ScanState.INCONCLUSIVE, ScanState.LIMITED_COVERAGE)
         ):
-            reason = getattr(scan_result, "inconclusive_reason", "") or "Incomplete sensor coverage."
+            total = len(FEATURE_NAMES)
+            missing = [str(f) for f in (getattr(scan_result, "missing_features", None) or [])]
+            availability = dict(getattr(scan_result, "telemetry_availability", None) or {})
+            if not missing and availability:
+                missing = [
+                    name
+                    for name, status in availability.items()
+                    if str(status).startswith(("UNAVAILABLE", "RESTRICTED"))
+                ]
+            missing_count = len(missing)
+            available_count = max(0, total - missing_count)
+            measured = sum(
+                1 for status in availability.values()
+                if str(status).startswith("GENUINE_MEASURED")
+            )
+            proxy = sum(
+                1 for status in availability.values()
+                if str(status).startswith(("HEURISTIC_PROXY", "SUBSTITUTED"))
+            )
+            prediction = str(getattr(scan_result, "ml_prediction", "") or "").upper()
+            if prediction == "LOW":
+                prediction = "SAFE"
+            if prediction not in ("SAFE", "WARNING", "CRITICAL"):
+                prediction = (
+                    "CRITICAL" if prob >= 0.90
+                    else "WARNING" if prob >= 0.50
+                    else "SAFE"
+                )
+            coverage = (
+                f" ({measured} measured, {proxy} heuristic/substituted)"
+                if availability
+                else ""
+            )
+            unavailable = (
+                " Unavailable: "
+                + ", ".join(
+                    name.replace("_count", "").replace("_", " ") for name in missing
+                )
+                + "."
+                if missing
+                else ""
+            )
             return {
                 "tag": "INCONCLUSIVE",
                 "title": "INCONCLUSIVE \u2014 LIMITED COVERAGE",
                 "badge": "  [LIMITED COVERAGE]  ",
                 "risk_label": "INCONCLUSIVE",
-                "desc": f"Safety assessment inconclusive: {reason}",
+                "desc": (
+                    f"{_inconclusive_telemetry_notice()}\n"
+                    f"ML probability: {pct}% ({prob:.2f}, actual model output). "
+                    f"ML prediction: {prediction} (model output only).\n"
+                    f"Final security assessment: INCONCLUSIVE \u2014 "
+                    f"{missing_count} of {total} sensors unavailable.\n"
+                    f"Available telemetry: {available_count} of {total} sensors"
+                    f"{coverage}.{unavailable}"
+                ),
                 "color": C["yellow"],
                 "desc_color": C["white"],
                 "badge_color": C["yellow"],
@@ -2410,7 +2506,9 @@ class DashboardPage(ctk.CTkFrame):
         if hasattr(self, "_core_3d") and self._core_3d:
             try:
                 if cls["valid"]:
-                    if cls["is_simulation"]:
+                    if cls["tag"] == "INCONCLUSIVE":
+                        core_state = "INCONCLUSIVE"
+                    elif cls["is_simulation"]:
                         core_state = "WARNING"
                     elif level in ("CRITICAL", "THREAT_DETECTED") or cls["prob"] >= 0.90:
                         core_state = "THREAT DETECTED"
@@ -2469,7 +2567,15 @@ class DashboardPage(ctk.CTkFrame):
         try:
             norm_prob, norm_pct, _ = normalize_risk_score(probability)
 
-            if threat_level in ("SAFE", "LOW", "SCAN_INCOMPLETE", "CANCELLED", "ERROR"):
+            if threat_level in (
+                "SAFE",
+                "LOW",
+                "SCAN_INCOMPLETE",
+                "CANCELLED",
+                "ERROR",
+                "INCONCLUSIVE",
+                "LIMITED_COVERAGE",
+            ):
                 return
 
             manager = get_alert_manager()

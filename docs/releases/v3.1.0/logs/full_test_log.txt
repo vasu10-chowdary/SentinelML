@@ -1,0 +1,54 @@
+AUDIT RUN: 2026-10-30T11:38:36-04:00 | Python 3.13.12
+===FILE=== tests/test_lbs1_applicability.py
+...................................................................      [100%]
+67 passed in 0.53s
+===FILE=== tests/test_lbs1_dataset_split.py
+....................                                                     [100%]
+20 passed in 4.91s
+===FILE=== tests/test_lbs1_entropy.py
+................                                                         [100%]
+16 passed in 2.13s
+===FILE=== tests/test_lbs1_fs_types.py
+.......                                                                  [100%]
+7 passed in 0.14s
+===FILE=== tests/test_lbs1_inotify.py
+..........s                                                              [100%]
+10 passed, 1 skipped in 0.42s
+===FILE=== tests/test_lbs1_predictor_guards.py
+...........................................                              [100%]
+43 passed in 1.60s
+===FILE=== tests/test_lbs1_privacy.py
+.....                                                                    [100%]
+5 passed in 0.74s
+===FILE=== tests/test_lbs1_processes.py
+.................................                                        [100%]
+33 passed in 0.70s
+===FILE=== tests/test_lbs1_schema_contract.py
+..........................................                               [100%]
+42 passed in 1.21s
+===FILE=== tests/test_lbs1_sensor_health.py
+..............                                                           [100%]
+14 passed in 3.18s
+===FILE=== tests/test_lbs1_training_gate.py
+..............                                                           [100%]
+14 passed in 67.88s (0:01:07)
+===FILE=== tests/test_lbs1_windows_import.py
+......ss.                                                                [100%]
+7 passed, 2 skipped in 1.38s
+===FILE=== tests/test_lbs1_windows_isolation.py
+...............s                                                         [100%]
+15 passed, 1 skipped in 8.42s
+===FILE=== tests/test_scan_audit.py
+.......sss..                                                             [100%]
+9 passed, 3 skipped in 6.72s
+===FILE=== tests/test_scan_engine_process_only.py
+......                                                                   [100%]
+6 passed in 0.69s
+===COMBINED===
+........................................................................ [ 22%]
+................................................s....................... [ 45%]
+........................................................................ [ 68%]
+..............................................................ss........ [ 91%]
+........s.......sss........                                              [100%]
+308 passed, 7 skipped in 99.21s (0:01:39)
+===DONE 2026-10-30T11:43:20-04:00===

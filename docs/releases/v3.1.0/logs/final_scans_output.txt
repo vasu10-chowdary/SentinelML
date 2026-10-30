@@ -1,0 +1,58 @@
+===== FILESYSTEM CUSTOM SCAN (harmless fixture) =====
+{
+  "access_denied": 0,
+  "directories_inspected": 1,
+  "elapsed_seconds": 36.87531757354736,
+  "error_message": "",
+  "files_inspected": 3,
+  "files_skipped": 0,
+  "filesystem_errors": 0,
+  "inconclusive_reason": "",
+  "is_inconclusive": false,
+  "ml_executed": true,
+  "ml_prediction": "SAFE",
+  "ml_probability": 0.32,
+  "model_source": "EXPERIMENTAL_SYNTHETIC_BASELINE_V1",
+  "phase_timings": {
+    "filesystem_s": 0.014,
+    "ml_analysis_s": 34.339,
+    "process_s": 2.505
+  },
+  "process_errors": 0,
+  "processes_analyzed": 65,
+  "scan_id": "SCN-1E6FA449DE6A",
+  "scan_origin": "DEMO_FIXTURE",
+  "scan_type": "custom",
+  "state": "safe",
+  "suspicious_files": [],
+  "threat_level": "SAFE"
+}
+===== PROCESS-ONLY SCAN (live host) =====
+{
+  "access_denied": 0,
+  "directories_inspected": 0,
+  "elapsed_seconds": 1.2406115531921387,
+  "error_message": "",
+  "files_inspected": 0,
+  "files_skipped": 0,
+  "filesystem_errors": 0,
+  "inconclusive_reason": "",
+  "is_inconclusive": false,
+  "ml_executed": true,
+  "ml_prediction": "SAFE",
+  "ml_probability": 0.29,
+  "model_source": "EXPERIMENTAL_SYNTHETIC_BASELINE_V1",
+  "phase_timings": {
+    "filesystem_s": 0.0,
+    "ml_analysis_s": 0.125,
+    "process_s": 1.063
+  },
+  "process_errors": 0,
+  "processes_analyzed": 65,
+  "scan_id": "SCN-341E4204A293",
+  "scan_origin": "DEMO_FIXTURE",
+  "scan_type": "process",
+  "state": "safe",
+  "suspicious_files": [],
+  "threat_level": "SAFE"
+}

@@ -76,6 +76,7 @@ class ScanResult:
     # ML analysis
     ml_executed: bool = False
     ml_probability: float = 0.0
+    ml_prediction: str = ""  # Raw model verdict, preserved even if final state is INCONCLUSIVE
     threat_level: str = "ANALYSIS_ERROR"  # Default to ERROR, not UNKNOWN or SAFE
     
     # Timing
@@ -422,9 +423,9 @@ class ScanEngine:
             result.scan_id = scan_id
             setattr(result, '_scan_id', scan_id)
             log.info(f"SCAN_START | ID: {scan_id} | TS: {scan_start} | MODE: {scan_type.value}")
-            # Determine scan scope
+            # Determine scan scope (process-only scans intentionally have no paths)
             scan_paths = self._determine_scan_paths(scan_type, custom_paths)
-            if not scan_paths:
+            if scan_type != ScanType.PROCESS and not scan_paths:
                 log.error("No valid scan paths determined")
                 result.state = ScanState.SCAN_INCOMPLETE
                 result.error_message = "No valid scan paths"
@@ -773,6 +774,7 @@ class ScanEngine:
             # All validations passed - store results
             result.ml_executed = True
             result.ml_probability = probability
+            result.ml_prediction = threat_level
             result.threat_level = threat_level
             result.current_path = ""
             

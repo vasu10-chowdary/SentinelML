@@ -1,0 +1,11 @@
+........................................................................ [ 20%]
+................................................s....................... [ 40%]
+........................................................................ [ 60%]
+..............................................................ss........ [ 80%]
+........s..............................................................  [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_lbs1_inotify.py:180: refusal is a non-Linux contract
+SKIPPED [1] tests/test_lbs1_windows_import.py:50: refusal contract is for non-Linux hosts
+SKIPPED [1] tests/test_lbs1_windows_import.py:58: refusal contract is for non-Linux hosts
+SKIPPED [1] tests/test_lbs1_windows_isolation.py:151: refusal is only observable on non-Linux hosts
+355 passed, 4 skipped in 306.34s (0:05:06)

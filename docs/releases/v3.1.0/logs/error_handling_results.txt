@@ -1,0 +1,92 @@
+Process scanning failed
+[WARN]️ CRITICAL: Scan incomplete (filesystem=True, process=False, ml=False)
+[WARN]️ CRITICAL: NO SECURITY CLASSIFICATION AVAILABLE - returning SCAN_INCOMPLETE
+[WARN]️ CRITICAL: Failed to load ML model
+[WARN]️ CRITICAL: Scan incomplete (filesystem=True, process=True, ml=False)
+[WARN]️ CRITICAL: NO SECURITY CLASSIFICATION AVAILABLE - returning SCAN_INCOMPLETE
+Feature vector contains NaN or infinite values
+[WARN]️ CRITICAL: ML prediction failed (returned None)
+[WARN]️ CRITICAL: Scan incomplete (filesystem=True, process=True, ml=False)
+[WARN]️ CRITICAL: NO SECURITY CLASSIFICATION AVAILABLE - returning SCAN_INCOMPLETE
+Scan result marked INCONCLUSIVE: Safety cannot be validated: 5 of 19 behavioral sensors are unavailable on linux. Incomplete telemetry cannot certify host as clean.
+[WARN]️ CRITICAL: ML analysis exception: simulated inference failure
+Traceback (most recent call last):
+  File "/home/kali/SentinelML/scanner/scan_engine.py", line 751, in _run_ml_analysis
+    ml_result = predictor.predict(result._features)
+  File "/usr/lib/python3.13/unittest/mock.py", line 1169, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/unittest/mock.py", line 1173, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/unittest/mock.py", line 1228, in _execute_mock_call
+    raise effect
+RuntimeError: simulated inference failure
+[WARN]️ CRITICAL: Scan incomplete (filesystem=True, process=True, ml=False)
+[WARN]️ CRITICAL: NO SECURITY CLASSIFICATION AVAILABLE - returning SCAN_INCOMPLETE
+===== A. PROCESS EXTRACTION FAILURE =====
+{
+  "error_message": "Scan incomplete: process, ML analysis failed",
+  "filesystem_errors": 0,
+  "inconclusive_reason": "",
+  "is_inconclusive": false,
+  "ml_executed": false,
+  "ml_prediction": "",
+  "ml_probability": 0.0,
+  "process_errors": 0,
+  "state": "scan_incomplete",
+  "threat_level": "ANALYSIS_ERROR"
+}
+===== B. ML MODEL LOADING FAILURE =====
+{
+  "error_message": "Scan incomplete: ML analysis failed",
+  "filesystem_errors": 0,
+  "inconclusive_reason": "",
+  "is_inconclusive": false,
+  "ml_executed": false,
+  "ml_prediction": "",
+  "ml_probability": 0.0,
+  "process_errors": 0,
+  "state": "scan_incomplete",
+  "threat_level": "ANALYSIS_ERROR"
+}
+===== C. INVALID FEATURE VECTOR (NaN) =====
+{
+  "error_message": "Scan incomplete: ML analysis failed",
+  "filesystem_errors": 0,
+  "inconclusive_reason": "",
+  "is_inconclusive": false,
+  "ml_executed": false,
+  "ml_prediction": "",
+  "ml_probability": 0.0,
+  "process_errors": 0,
+  "state": "scan_incomplete",
+  "threat_level": "ANALYSIS_ERROR"
+}
+===== D. MISSING SENSOR DATA (QUICK, LINUX) =====
+{
+  "available_feature_count": 14,
+  "error_message": "",
+  "filesystem_errors": 0,
+  "inconclusive_reason": "Safety cannot be validated: 5 of 19 behavioral sensors are unavailable on linux. Incomplete telemetry cannot certify host as clean.",
+  "is_inconclusive": true,
+  "ml_executed": true,
+  "ml_prediction": "SAFE",
+  "ml_probability": 0.12,
+  "process_errors": 0,
+  "state": "inconclusive",
+  "threat_level": "INCONCLUSIVE"
+}
+===== E. ML EXCEPTION (INCOMPLETE ANALYSIS) =====
+{
+  "error_message": "Scan incomplete: ML analysis failed",
+  "filesystem_errors": 0,
+  "inconclusive_reason": "",
+  "is_inconclusive": false,
+  "ml_executed": false,
+  "ml_prediction": "",
+  "ml_probability": 0.0,
+  "process_errors": 0,
+  "state": "scan_incomplete",
+  "threat_level": "ANALYSIS_ERROR"
+}

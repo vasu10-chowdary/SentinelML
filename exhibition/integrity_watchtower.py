@@ -221,6 +221,12 @@ def is_safe_watchtower_folder(path) -> Tuple[bool, str]:
     if len(p.parts) <= 1 or (os.name == "nt" and len(p.parts) == 2 and p.parts[1] == "\\"):
         return False, "Drive root is too broad — choose a dedicated test folder."
     for bad in _WIN_SYS + _UNIX_SYS:
+        if bad == "/":
+            # The POSIX root itself is too broad, but treating "/" as a prefix
+            # would reject every absolute path (including dedicated temp dirs).
+            if s == "/":
+                return False, "System directory — choose a dedicated test folder."
+            continue
         if s == bad or s.startswith(bad + os.sep) or s.startswith(bad.rstrip(os.sep) + "/"):
             return False, "System directory — choose a dedicated test folder."
     return True, "OK"
