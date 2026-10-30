@@ -199,14 +199,14 @@ class SentinelBackendProvider(AIProvider):
             return "NOT_CONFIGURED", "Backend URL is missing."
             
         try:
-            r = requests.get(f"{self.backend_url}/health", timeout=60)
+            r = requests.get(f"{self.backend_url}/health", timeout=15)
             if r.status_code == 200:
                 data = r.json()
                 if data.get("status") == "ok":
                     return "READY", "Connection successful."
             return "ERROR", f"Backend returned {r.status_code}"
         except requests.exceptions.Timeout:
-            return "TIMEOUT", "SentinelML AI service did not respond within 30 seconds."
+            return "TIMEOUT", "SentinelML AI service did not respond within 15 seconds."
         except requests.exceptions.ConnectionError:
             return "OFFLINE", "Unable to reach SentinelML AI service."
         except Exception as e:
@@ -232,7 +232,7 @@ class SentinelBackendProvider(AIProvider):
         # Render free-tier occasionally returns 500/502/503 during or just after
         # cold-start warm-up. Retry up to 1 time with 5s backoff before failing.
         MAX_RETRIES = 1
-        RETRY_DELAY = 5.0
+        RETRY_DELAY = 2.0
         TRANSIENT_CODES = {500, 502, 503, 504}
 
         # Bulletproof safety cap to strictly prevent HTTP 422 from backend
@@ -260,7 +260,7 @@ class SentinelBackendProvider(AIProvider):
                     print(f"- JSON serialization success: False (Error: {e})")
                 print("==================================\n")
             try:
-                r = requests.post(url, json=payload, timeout=90)
+                r = requests.post(url, json=payload, timeout=20)
                 r.encoding = "utf-8"
                 if r.status_code == 422:
                     print(f"\nACTUAL 422 BODY:\n{r.text}")
@@ -310,13 +310,7 @@ class SentinelBackendProvider(AIProvider):
             except requests.exceptions.Timeout:
                 elapsed = time.time() - start_ts
                 log.error(f"AI_PROVIDER_GENERATE_END | ELAPSED: {elapsed:.3f}s | ERROR: Timeout | ATTEMPT: {attempt+1}")
-                last_error = "SentinelML AI service did not respond within 90 seconds."
-                if attempt < MAX_RETRIES:
-                    log.warning(f"Timeout on attempt {attempt+1}. Retrying in {RETRY_DELAY}s...")
-                    time.sleep(RETRY_DELAY)
-                    RETRY_DELAY *= 1.5
-                    continue
-                return False, last_error
+                return False, "SentinelML AI service did not respond within 20 seconds. The cloud instance may be spinning up from sleep; please try again shortly."
             except requests.exceptions.ConnectionError:
                 return False, "Unable to reach SentinelML AI service."
             except Exception as e:

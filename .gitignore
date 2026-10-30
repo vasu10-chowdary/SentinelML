@@ -33,6 +33,11 @@ linux_stage6.log
 build_log.txt
 build_log2.txt
 
+# ── RUNTIME STATE (per-installation, never committed) ─────────────────────────
+scan_audit_history.json
+scan_audit_history.json.corrupt-*
+scan_audit_history.json.tmp-*
+
 # ── CRASH / TEMP FILES ────────────────────────────────────────────────────────
 CRASH.log
 *.tmp
@@ -47,3 +52,26 @@ CRASH.log
 .vscode/
 .idea/
 *.swp
+
+# ── LOCAL WORKSPACE ARTIFACTS — NOT SOURCE ────────────────────────────────────
+scratch/
+backups/
+review2_evidence/
+extracted_ppt/
+*.pptx
+*.AppImage
+Installer/
+sentinelml-ai-backend/
+.sentinelml_instance.lock
+_dashboard_HEAD_backup.py
+_recovery_block_A.py
+gui/pages/*.bak*
+gui/pages/dashboard_backup_*
+models/v2/
+alerts/alerts.json
+data/dataset_audit_log.jsonl
+
+# ── GENERATED REPORT OUTPUT (runtime evidence, not source) ────────────────────
+reports/SentinelML_Incident_Report_*
+reports/exhibition_demo_*
+reports/file_integrity_*

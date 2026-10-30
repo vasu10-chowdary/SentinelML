@@ -109,6 +109,106 @@ class SettingsPage(ctk.CTkFrame):
             "registry_watch",
         )
 
+        # -- Live SOC Monitoring section ------------------------------------
+        section("Live SOC Monitoring")
+
+        soc_cfg = self._config.setdefault("soc", {})
+
+        soc_card = ctk.CTkFrame(
+            scroll,
+            fg_color=C["panel"],
+            corner_radius=10,
+            border_width=1,
+            border_color=C["border"],
+        )
+        soc_card.grid(row=row_idx[0], column=0, sticky="ew", pady=(0, 8))
+        soc_card.grid_columnconfigure(0, weight=1)
+        row_idx[0] += 1
+
+        soc_txt = ctk.CTkFrame(soc_card, fg_color="transparent")
+        soc_txt.grid(row=0, column=0, sticky="w", padx=18, pady=14)
+        ctk.CTkLabel(
+            soc_txt,
+            text="Background SOC Refresh",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=C["white"],
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            soc_txt,
+            text=(
+                "Collects real host telemetry on a fixed schedule: processes, CPU/memory, "
+                "file metadata changes in the monitored directories, network and alerts. "
+                "No full-disk scan and no file hashing in this loop."
+            ),
+            font=ctk.CTkFont(size=11),
+            text_color=C["muted"],
+            justify="left",
+            wraplength=560,
+        ).pack(anchor="w", pady=(2, 0))
+
+        self._soc_auto_var = ctk.BooleanVar(value=bool(soc_cfg.get("auto_refresh", True)))
+        ctk.CTkSwitch(
+            soc_card,
+            text="",
+            variable=self._soc_auto_var,
+            onvalue=True,
+            offvalue=False,
+            progress_color=C["accent"],
+            button_color=C["white"],
+            button_hover_color=C["accent"],
+            command=self._on_soc_auto_toggle,
+        ).grid(row=0, column=1, padx=18)
+
+        interval_card = ctk.CTkFrame(
+            scroll,
+            fg_color=C["panel"],
+            corner_radius=10,
+            border_width=1,
+            border_color=C["border"],
+        )
+        interval_card.grid(row=row_idx[0], column=0, sticky="ew", pady=(0, 8))
+        interval_card.grid_columnconfigure(0, weight=1)
+        row_idx[0] += 1
+
+        int_txt = ctk.CTkFrame(interval_card, fg_color="transparent")
+        int_txt.grid(row=0, column=0, sticky="w", padx=18, pady=14)
+        ctk.CTkLabel(
+            int_txt,
+            text="Refresh Interval",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=C["white"],
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            int_txt,
+            text=(
+                "Default 60 seconds. Slow collections delay the next pass instead of "
+                "queuing extra runs; the next refresh time is shown on the dashboard."
+            ),
+            font=ctk.CTkFont(size=11),
+            text_color=C["muted"],
+            justify="left",
+            wraplength=560,
+        ).pack(anchor="w", pady=(2, 0))
+
+        interval_choices = ["30 seconds", "60 seconds", "120 seconds", "300 seconds"]
+        current_interval = int(soc_cfg.get("interval_seconds", 60) or 60)
+        current_choice = next(
+            (c for c in interval_choices if int(c.split()[0]) == current_interval),
+            "60 seconds",
+        )
+        self._soc_interval_menu = ctk.CTkOptionMenu(
+            interval_card,
+            values=interval_choices,
+            width=140,
+            fg_color=C["card"],
+            button_color=C["border"],
+            button_hover_color=C["accent"],
+            text_color=C["white"],
+            command=self._on_soc_interval_change,
+        )
+        self._soc_interval_menu.set(current_choice)
+        self._soc_interval_menu.grid(row=0, column=1, padx=18)
+
         # -- Demo Mode section ----------------------------------------------
         section("Demo Mode")
 
@@ -367,6 +467,41 @@ class SettingsPage(ctk.CTkFrame):
             justify="left",
         ).pack(anchor="w", padx=18, pady=18)
 
+    # -- Live SOC monitoring ----------------------------------------------
+    def _soc_dashboard(self):
+        pages = getattr(self._main_window, "_pages", None)
+        if isinstance(pages, dict):
+            page = pages.get("dashboard")
+            if page is not None and hasattr(page, "_soc_monitor"):
+                return page
+        return None
+
+    def _on_soc_auto_toggle(self) -> None:
+        enabled = bool(self._soc_auto_var.get())
+        self._config.setdefault("soc", {})["auto_refresh"] = enabled
+        cfg.save(self._config)
+        page = self._soc_dashboard()
+        if page is not None:
+            if enabled:
+                page._soc_start()
+            else:
+                page._soc_stop()
+
+    def _on_soc_interval_change(self, choice: str) -> None:
+        try:
+            seconds = int(str(choice).split()[0])
+        except Exception:
+            return
+        self._config.setdefault("soc", {})["interval_seconds"] = seconds
+        cfg.save(self._config)
+        page = self._soc_dashboard()
+        if page is not None:
+            page._soc_monitor.apply_config(self._config)
+            try:
+                page._render_soc_status()
+            except Exception:
+                pass
+
     # -- Persistence -------------------------------------------------------
     def _toggle(self, key: str, value: bool) -> None:
         self._config.setdefault("permissions", {})[key] = value
@@ -419,30 +554,7 @@ class SettingsPage(ctk.CTkFrame):
                 # Get the root path (utils/paths approach)
                 exe = str(Path(__file__).parent.parent.parent / "app.py")
                 
-            if sys.platform == "win32":
-                import winreg
-                key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-                with winreg.OpenKey(
-                    winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE
-                ) as k:
-                    if enable:
-                        winreg.SetValueEx(k, "SentinelML", 0, winreg.REG_SZ, f'"{exe}"')
-                    else:
-                        try:
-                            winreg.DeleteValue(k, "SentinelML")
-                        except FileNotFoundError:
-                            pass
-            elif sys.platform.startswith("linux"):
-                from pathlib import Path
-                autostart_dir = Path.home() / ".config" / "autostart"
-                desktop_file = autostart_dir / "sentinelml.desktop"
-                
-                if enable:
-                    autostart_dir.mkdir(parents=True, exist_ok=True)
-                    content = f"[Desktop Entry]\nType=Application\nName=SentinelML\nExec={exe}\nTerminal=false\nStartupNotify=false\n"
-                    desktop_file.write_text(content, encoding="utf-8")
-                else:
-                    if desktop_file.exists():
-                        desktop_file.unlink()
+            from utils.platform_adapter import get_platform_adapter
+            get_platform_adapter().set_autostart(enable, exe)
         except Exception:
             pass  # Non-fatal

@@ -12,6 +12,7 @@ CRITICAL RULES:
 - Never fake scan results
 """
 
+import sys
 import os
 import time
 import logging
@@ -54,6 +55,7 @@ class FilesystemScanner:
         self._stats = ScanStats()
         self._progress_callback: Optional[Callable[[ScanStats], None]] = None
         self._scan_start_time = 0.0
+        self._last_progress_time = 0.0
     
     def scan_paths(self, 
                    paths: List[Path],
@@ -127,14 +129,17 @@ class FilesystemScanner:
             return
         
         if self._cancel_requested:
+            self._stats.cancelled = True
             return
         
         try:
             self._stats.directories_inspected += 1
             self._stats.current_path = str(directory)
             
-            # Update progress periodically
-            if self._stats.directories_inspected % 100 == 0:
+            # Update progress periodically (throttled to ~75ms or every 25 dirs)
+            now = time.time()
+            if now - self._last_progress_time >= 0.075 or self._stats.directories_inspected % 25 == 0:
+                self._last_progress_time = now
                 self._update_progress()
             
             # List directory contents
@@ -150,14 +155,26 @@ class FilesystemScanner:
                 return
             
             # Process each entry
-            for entry in entries:
+            for _fs_idx, entry in enumerate(entries):
                 if self._cancel_requested:
+                    self._stats.cancelled = True
                     return
-                
+                # Cooperative GIL yield every 15 entries to keep the main-thread event loop responsive
+                if _fs_idx % 15 == 0:
+                    time.sleep(0)
                 try:
+                    if entry.is_symlink():
+                        self._stats.files_skipped += 1
+                        continue
                     if entry.is_file():
                         self._scan_file(entry)
                     elif entry.is_dir():
+                        # Skip build artifacts, package managers, and version control noise directories that thrash disk IO
+                        name_lower = entry.name.lower()
+                        if (name_lower in {'.git', 'node_modules', '__pycache__', '.pytest_cache', '.venv', 'venv', 'env', 'build_env', 'build', 'dist', '.idea', '.vscode'}
+                                or name_lower.startswith('.freebuff') or name_lower.endswith('_env')):
+                            self._stats.files_skipped += 1
+                            continue
                         self._scan_directory(entry, current_depth + 1, max_depth)
                     else:
                         # Symlink, special file, etc.
@@ -179,17 +196,29 @@ class FilesystemScanner:
         Args:
             file_path: File to inspect
         """
+        if self._cancel_requested:
+            self._stats.cancelled = True
+            return
+
         try:
             self._stats.files_inspected += 1
             self._stats.current_path = str(file_path)
             
-            # Update progress periodically
-            if self._stats.files_inspected % 1000 == 0:
+            # Update progress periodically (throttled to ~75ms or every 50 files)
+            now = time.time()
+            if now - self._last_progress_time >= 0.075 or self._stats.files_inspected % 50 == 0:
+                self._last_progress_time = now
                 self._update_progress()
             
             # Get file stats (metadata only, don't read content)
             try:
                 file_stat = file_path.stat()
+                # Skip cloud recall / offline placeholders on Windows (0x00401000)
+                if sys.platform == "win32":
+                    attrs = getattr(file_stat, "st_file_attributes", 0)
+                    if attrs & 0x00401000:
+                        self._stats.files_skipped += 1
+                        return
                 self._stats.total_size_bytes += file_stat.st_size
                 
                 # Check for suspicious indicators (basic heuristics)
@@ -230,7 +259,8 @@ class FilesystemScanner:
             ext = file_path.suffix.lower()
             if ext in suspicious_extensions:
                 # Only mark executables/scripts in user directories as suspicious
-                if 'Users' in str(file_path) or 'Documents' in str(file_path):
+                from utils.platform_adapter import get_platform_adapter
+                if get_platform_adapter().is_user_path(file_path) or 'Documents' in str(file_path):
                     return True
             
             # Check for recently modified files (within last hour)
@@ -263,6 +293,7 @@ class FilesystemScanner:
         """Request scan cancellation."""
         log.info("Cancellation requested")
         self._cancel_requested = True
+        self._stats.cancelled = True
     
     def is_scanning(self) -> bool:
         """Check if scan is currently running."""

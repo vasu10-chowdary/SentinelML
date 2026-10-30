@@ -1,4 +1,4 @@
-"""
+﻿"""
 SentinelML V2 — Exhibition Experience & Evidence Dashboard
 ============================================================
 A polished, exhibition-ready cybersecurity demonstration dashboard featuring:
@@ -32,19 +32,19 @@ from exhibition.report_exporter import ExhibitionReportExporter
 
 # Exhibition color palette: Deep Navy, Crisp White, Muted Gold, Slate Border, Emerald & Amber
 EX_COLORS = {
-    "bg": "#0a1128",          # Deep navy background
-    "card": "#101f42",        # Card surface
-    "card_border": "#1e3a6e", # Card border
-    "header": "#001f54",      # Dark header navy
-    "gold": "#d4af37",        # Muted gold accent
-    "gold_hover": "#b89728",  # Darker gold for buttons
-    "white": "#fefcfb",       # Primary crisp white
-    "muted": "#94a3b8",       # Slate secondary text
-    "safe": "#10b981",        # Emerald green
-    "warning": "#f59e0b",     # Amber orange
-    "critical": "#ef4444",    # Crimson red
-    "cyan": "#00d8ff",        # High-visibility cyan accent
-    "panel_dark": "#061226",  # Darker inner panel
+    "bg": "#0b1427",          # Deep navy background
+    "card": "#162040",        # Card surface
+    "card_border": "#2a4a7f", # Card border
+    "header": "#0e2a6e",      # Dark header navy
+    "gold": "#e8c84a",        # Muted gold accent
+    "gold_hover": "#d4af30",  # Darker gold for buttons
+    "white": "#f0f4ff",       # Primary crisp white
+    "muted": "#b8c5d9",       # Slate secondary text
+    "safe": "#34d897",        # Emerald green
+    "warning": "#fbb03b",     # Amber orange
+    "critical": "#ff6b6b",    # Crimson red
+    "cyan": "#38d8f5",        # High-visibility cyan accent
+    "panel_dark": "#0f1d38",  # Darker inner panel
 }
 
 

@@ -38,6 +38,14 @@ DEFAULTS: dict = {
         "backend_url": "https://sentinelml-ai-backend.onrender.com",
         "backend": "auto",
         "gemini_api_key": ""
+    },
+    # Live SOC monitoring. Values are read by livemon.SOCMonitor.
+    "soc": {
+        "auto_refresh": True,        # start the 60 s refresh loop with the app
+        "interval_seconds": 60,      # clamped to 10..3600 by the monitor
+        "file_depth": 1,             # metadata walk depth inside each scope root
+        "max_files": 2000,           # per-cycle file budget (no full-disk walk)
+        "scan_stale_seconds": 86400, # ML scan older than this is reported stale
     }
 }
 

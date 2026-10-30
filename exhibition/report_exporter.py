@@ -26,8 +26,9 @@ def sanitize_path(text: str) -> str:
         return ""
     # Redact Windows user home paths
     text = re.sub(r"[A-Za-z]:\\Users\\[^\\]+", "[USER_PROFILE]", text, flags=re.IGNORECASE)
-    # Redact Unix user home paths
+    # Redact Unix and macOS user home paths
     text = re.sub(r"/home/[^/]+", "[USER_PROFILE]", text)
+    text = re.sub(r"/Users/[^/]+", "[USER_PROFILE]", text)
     return text
 
 
@@ -127,6 +128,35 @@ class ExhibitionReportExporter:
 
         log.info("Demonstration reports exported: %s and %s", json_path.name, md_path.name)
         return {"json": json_path, "md": md_path}
+
+    def export_incident_report(
+        self,
+        scan_result: Any = None,
+        correlator: Any = None,
+        integrity_report: Optional[Dict[str, Any]] = None,
+        ai_summary: Optional[str] = None,
+        scenario: Optional[Dict[str, Any]] = None,
+        output_dir: Optional[Path] = None,
+        stem: Optional[str] = None,
+    ) -> Dict[str, Path]:
+        """Write a provenance-aware investigation report as JSON + Markdown.
+
+        Built by ``exhibition.incident_report``; filenames are deterministic and
+        collision-safe (an existing file is never overwritten).
+        """
+        # Local import keeps report_exporter free of a module-level cycle.
+        from exhibition.incident_report import build_incident_report, write_report
+
+        report = build_incident_report(
+            scan_result=scan_result,
+            correlator=correlator,
+            integrity_report=integrity_report,
+            ai_summary=ai_summary,
+            scenario=scenario,
+        )
+        paths = write_report(report, output_dir=output_dir or self._output_dir, stem=stem)
+        log.info("Incident report exported: %s and %s", paths["json"].name, paths["md"].name)
+        return paths
 
     def _render_markdown(self, data: Dict[str, Any]) -> str:
         """Render a readable Markdown exhibition summary."""

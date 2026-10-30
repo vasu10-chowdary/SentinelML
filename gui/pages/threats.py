@@ -1,4 +1,5 @@
-﻿import customtkinter as ctk
+from ml.predictor import normalize_risk_score
+import customtkinter as ctk
 import tkinter as tk
 import time
 import math
@@ -43,9 +44,15 @@ class ThreatsPage(ctk.CTkFrame):
         self.content_frame.grid_columnconfigure(1, weight=1)
 
         self.last_scan_id = None
-        self.after(500, self._poll_scan_data)
+        self._is_destroyed = False
+        self._showing_empty_state = False
+        self._poll_after_id = None
+        # Build immediate initial state synchronously so page is never blank
+        self._poll_scan_data()
 
     def _poll_scan_data(self):
+        if getattr(self, "_is_destroyed", False) or not self.winfo_exists():
+            return
         try:
             dashboard = None
             if hasattr(self.master, "_pages"):
@@ -55,17 +62,30 @@ class ThreatsPage(ctk.CTkFrame):
                 scan_result = dashboard._last_scan_result
                 if scan_result and getattr(scan_result, 'state', None):
                     s_val = scan_result.state.value.upper()
-                    if s_val in ("SAFE", "WARNING", "THREAT_DETECTED", "SCAN_INCOMPLETE", "ANALYSIS_ERROR"):
+                    if s_val in ("SAFE", "WARNING", "THREAT_DETECTED", "SCAN_INCOMPLETE",
+                                 "ANALYSIS_ERROR", "INCONCLUSIVE", "LIMITED_COVERAGE"):
                         if id(scan_result) != self.last_scan_id:
                             self.last_scan_id = id(scan_result)
                             self._build_report(scan_result)
             
-            if self.last_scan_id is None:
+            if self.last_scan_id is None and not self._showing_empty_state:
                 self._build_empty_state()
+                self._showing_empty_state = True
         except Exception as e:
             log.error(f"Error polling scan data: {e}")
             
-        self.after(1000, self._poll_scan_data)
+        if not getattr(self, "_is_destroyed", False) and self.winfo_exists():
+            self._poll_after_id = self.after(1000, self._poll_scan_data)
+
+    def destroy(self) -> None:
+        self._is_destroyed = True
+        if getattr(self, "_poll_after_id", None):
+            try:
+                self.after_cancel(self._poll_after_id)
+            except Exception:
+                pass
+            self._poll_after_id = None
+        super().destroy()
 
     def _build_empty_state(self):
         for widget in self.content_frame.winfo_children():
@@ -78,6 +98,7 @@ class ThreatsPage(ctk.CTkFrame):
         ctk.CTkLabel(empty, text="Completed scans and detected behavioral events will appear here.", font=("Consolas", 13), text_color=C["muted"]).pack(pady=10)
 
     def _build_report(self, scan_result):
+        self._showing_empty_state = False
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
@@ -94,27 +115,26 @@ class ThreatsPage(ctk.CTkFrame):
         p_lvl = GlassPanel(left_col, "THREAT LEVEL")
         p_lvl.pack(fill="x", pady=5)
         
-        if s_val == "SAFE":
-            col, txt = C["green"], "SAFE"
-            msg = "No significant malicious behavior was detected during the completed scan."
-        elif s_val == "WARNING":
-            col, txt = C["orange"], "WARNING"
-            msg = "The observed behavior was classified as potentially malicious by the trained model."
-        elif s_val == "THREAT_DETECTED":
-            col, txt = C["red"], "THREAT DETECTED"
-            msg = "The observed behavior was classified as potentially malicious by the trained model."
-        elif s_val == "SCAN_INCOMPLETE":
-            col, txt = C["muted"], "SCAN INCOMPLETE"
-            msg = "Scan was interrupted or cancelled before completion. NO COMPLETE ANALYSIS = NO SAFE RESULT."
-        elif s_val == "ANALYSIS_ERROR":
-            col, txt = "#e3b341", "ANALYSIS ERROR"
-            msg = "An error occurred during ML analysis or feature extraction."
+        if hasattr(scan_result, "get_unified_classification"):
+            classification = scan_result.get_unified_classification()
         else:
-            col, txt = C["muted"], "UNKNOWN"
-            msg = "Status unknown."
+            classification = {
+                "tag": s_val,
+                "color_key": "green" if s_val == "SAFE" else "yellow",
+                "description": "Completed scan analysis.",
+                "scope_description": "System Scan",
+                "is_borderline": False,
+                "borderline_note": ""
+            }
+
+        col = C.get(classification.get("color_key", "green"), C["green"])
+        txt = classification.get("tag", s_val)
+        msg = classification.get("description", "Scan complete.")
             
-        ctk.CTkLabel(p_lvl.content, text=f"[{txt}]", font=("Consolas", 24, "bold"), text_color=col).pack(pady=5)
+        ctk.CTkLabel(p_lvl.content, text=f"[{txt}]", font=("Consolas", 18, "bold"), text_color=col).pack(pady=5)
         ctk.CTkLabel(p_lvl.content, text=msg, font=("Consolas", 11), text_color=C["white"], wraplength=400, justify="center").pack(pady=5)
+        if classification.get("is_borderline") and classification.get("borderline_note"):
+            ctk.CTkLabel(p_lvl.content, text=classification["borderline_note"], font=("Consolas", 10, "italic"), text_color=C["orange"], wraplength=400, justify="center").pack(pady=(0, 4))
 
         # Threat Overview (SECTION 1 & 5)
         p_over = GlassPanel(left_col, "INCIDENT DETAILS & OVERVIEW")
@@ -122,7 +142,9 @@ class ThreatsPage(ctk.CTkFrame):
         
         stats = [
             ("STATUS", txt),
-            ("ML RISK", f"{getattr(scan_result, 'ml_probability', 0.0)*100:.1f}%"),
+            ("SCAN SCOPE", classification.get("scope_description", "Host Scan")),
+            ("SCAN ORIGIN", getattr(scan_result, 'scan_origin', 'LIVE_HOST_SCAN')),
+            ("ML RISK", f"{normalize_risk_score(getattr(scan_result, 'ml_probability', 0.0))[1]}%"),
             ("PROCESSES INSPECTED", str(getattr(scan_result, 'processes_analyzed', 'N/A'))),
             ("FILES INSPECTED", str(getattr(scan_result, 'files_inspected', 'N/A'))),
             ("SCAN DURATION", f"{getattr(scan_result, 'elapsed_seconds', 0.0):.1f}s"),
@@ -178,7 +200,7 @@ class ThreatsPage(ctk.CTkFrame):
             "RANDOM FOREST",
             "   |",
             "   v",
-            f"MALICIOUS PROBABILITY: {getattr(scan_result, 'ml_probability', 0.0)*100:.1f}%  [MODEL OUTPUT]"
+            f"MALICIOUS PROBABILITY: {normalize_risk_score(getattr(scan_result, 'ml_probability', 0.0))[0] * 100:.1f}%  [MODEL OUTPUT]"
         ]
         
         for step in steps:
@@ -200,7 +222,6 @@ class ThreatsPage(ctk.CTkFrame):
     def draw_investigation_canvas(self, active_color):
         try:
             self.canvas.delete("all")
-            self.canvas.update()
             w = self.canvas.winfo_width()
             h = self.canvas.winfo_height()
             if w < 50: w = 400

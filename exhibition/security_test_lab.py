@@ -360,8 +360,11 @@ class SecurityTestLab:
             # Stage 2: Filesystem scanning
             scan_res = self.engine.scan(
                 ScanType.CUSTOM,
-                custom_paths=[self.simulator.sandbox_root]
+                custom_paths=[self.simulator.sandbox_root],
+                scan_origin="CONTROLLED_SIMULATION"
             )
+            scan_res.is_simulation = True
+            scan_res.scan_origin = "CONTROLLED_SIMULATION"
 
             stage2_metrics = {
                 "files_inspected": scan_res.files_inspected,
@@ -539,6 +542,13 @@ class SecurityTestLab:
 
             if cleanup_after:
                 self.simulator.reset_sandbox()
+
+            if scan_res:
+                scan_res.is_simulation = True
+                scan_res.scan_origin = "CONTROLLED_SIMULATION"
+                scan_res.threat_level = clf_result
+                if ml_prob is not None:
+                    scan_res.ml_probability = ml_prob
 
             return {
                 "status": "SUCCESS",

@@ -81,6 +81,7 @@ class SentinelAI:
                 if mode == "backend":
                     self.status = status_code
                     self.status_detail = msg
+                    self.provider = backend_prov
                     log.warning(f"SentinelAI backend initialization failed: {msg}")
                     return
         
@@ -108,6 +109,7 @@ class SentinelAI:
             if mode == "auto" and backend_status:
                 self.status = backend_status
                 self.status_detail = backend_msg
+                self.provider = backend_prov
                 log.warning(f"SentinelAI backend failed and no fallback available: {backend_msg}")
             else:
                 self.status = "NOT_CONFIGURED"
@@ -166,8 +168,10 @@ class SentinelAI:
         return d
 
     def explain_scan(self, scan_result) -> str:
-        if not self.provider or self.status != "READY":
-            return "SentinelAI is temporarily unavailable. Please try again later. (Check Settings if you wish to configure a personal API key fallback)."
+        if not self.provider:
+            return "SentinelAI is not configured. Please enable SentinelAI in Settings."
+        if self.status in ["NOT_CONFIGURED", "DISABLED"]:
+            return "SentinelAI is currently disabled. Please enable it in Settings."
 
         try:
             return self.ask("Explain my latest scan", scan_result)
@@ -202,8 +206,10 @@ class SentinelAI:
         return fallback
 
     def ask(self, question: str, scan_result=None) -> str:
-        if not self.provider or self.status != "READY":
-            return "SentinelAI is currently unavailable."
+        if not self.provider:
+            return "SentinelAI is not configured. Please enable SentinelAI in Settings."
+        if self.status in ["NOT_CONFIGURED", "DISABLED"]:
+            return "SentinelAI is currently disabled. Please enable it in Settings."
 
         ctx_dict = self._build_context_dict(scan_result)
 
@@ -211,6 +217,7 @@ class SentinelAI:
             "RandomForest classification is authoritative. "
             "Use only supplied scan data for scan-specific claims. "
             "Never invent missing values. "
+            "Do not invent Windows-specific indicators, registry keys, or findings not present in the scan telemetry. "
             "Explain evidence separately from interpretation. "
             "Do not change SAFE/WARNING/THREAT classification. "
             "Mention Linux telemetry limitations when relevant. "
@@ -283,24 +290,36 @@ class SentinelAI:
         # providers — do NOT remove this argument.
         success, response = self.provider.generate(prompt, sys_instructions, scan_context=ctx_dict)
         if success:
+            self.status = "READY"
+            self.status_detail = "Connection successful."
             self.history.append(("SentinelAI", response))
             return response
 
-        # ── Classify the failure truthfully ──────────────────────────────────
+        # ── Classify the failure truthfully and update status ──────────────────
         resp_lower = response.lower()
         if "422" in response or "validation" in resp_lower or "schema" in resp_lower:
+            self.status = "ERROR"
+            self.status_detail = "Request validation error (HTTP 422)."
             error_category = (
                 "Request validation error (HTTP 422). The request payload did not "
                 "pass backend schema validation. This is a client-side configuration "
                 "issue, not a temporary outage."
             )
-        elif "TIMEOUT" in response or "seconds" in response:
-            error_category = "Network timeout. The AI service did not respond in time."
-        elif "OFFLINE" in response or "Unable to reach" in response:
-            error_category = "Network unreachable. Check your internet connection."
-        elif "authentication" in resp_lower or "401" in response or "403" in response:
-            error_category = "Authentication failure. Check AI configuration in Settings."
+        elif "timeout" in resp_lower or "seconds" in resp_lower:
+            self.status = "TIMEOUT"
+            self.status_detail = "Network timeout. The AI service did not respond in time."
+            error_category = self.status_detail
+        elif "offline" in resp_lower or "unable to reach" in resp_lower or "connection" in resp_lower:
+            self.status = "OFFLINE"
+            self.status_detail = "Network unreachable. Check your internet connection."
+            error_category = self.status_detail
+        elif "authentication" in resp_lower or "401" in response or "403" in response or "api key" in resp_lower:
+            self.status = "ERROR"
+            self.status_detail = "Authentication failure. Check AI configuration in Settings."
+            error_category = self.status_detail
         else:
+            self.status = "UNAVAILABLE"
+            self.status_detail = response
             error_category = response
 
         return (
@@ -311,3 +330,17 @@ class SentinelAI:
         )
     def clear_history(self):
         self.history = []
+
+    def check_health(self):
+        """Perform non-blocking health check against the active provider."""
+        if not self.provider:
+            return self.status, getattr(self, "status_detail", "Provider not configured")
+        try:
+            status_code, msg = self.provider.is_available()
+            self.status = status_code
+            self.status_detail = msg
+            return status_code, msg
+        except Exception as e:
+            self.status = "ERROR"
+            self.status_detail = str(e)
+            return "ERROR", str(e)

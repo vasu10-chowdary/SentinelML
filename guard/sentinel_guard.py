@@ -51,7 +51,18 @@ class SentinelGuard:
         self._files_monitored = 0
         self._events_detected = 0
         self._threats_found = 0
+        self._paused = False
     
+    def pause(self) -> None:
+        """Temporarily pause filesystem scanning during active on-demand scans."""
+        self._paused = True
+        log.debug("SentinelGuard monitoring paused for on-demand scan")
+
+    def resume(self) -> None:
+        """Resume background filesystem monitoring."""
+        self._paused = False
+        log.debug("SentinelGuard monitoring resumed")
+
     def start(self) -> bool:
         """
         Start the background guard.
@@ -161,10 +172,11 @@ class SentinelGuard:
         
         try:
             while not self._stop_event.is_set():
-                self._check_filesystem()
+                if not getattr(self, "_paused", False):
+                    self._check_filesystem()
                 
-                # Sleep 5 seconds between checks
-                self._stop_event.wait(5.0)
+                # Sleep 30 seconds between background disk passes
+                self._stop_event.wait(30.0)
         
         except Exception as e:
             log.error("Monitor loop crashed: %s", e, exc_info=True)
@@ -179,17 +191,37 @@ class SentinelGuard:
         Phase 8: Basic implementation (file counting).
         Phase 9+: Implement actual behavior detection.
         """
+        if getattr(self, "_paused", False):
+            return
+
         try:
             total_files = 0
             
             for path in self._monitored_paths:
+                if getattr(self, "_paused", False):
+                    return
                 if not path.exists():
                     log.warning("Monitored path no longer exists: %s", path)
                     continue
+                import time; time.sleep(0.005)
                 
-                # Count files (simple check)
+                # Count files with shallow depth limit (depth <= 2) and skip noise directories
                 try:
-                    file_count = sum(1 for _ in path.rglob("*") if _.is_file())
+                    file_count = 0
+                    for item in path.iterdir():
+                        if getattr(self, "_paused", False):
+                            return
+                        if item.is_file():
+                            file_count += 1
+                        elif item.is_dir() and item.name.lower() not in {'.git', 'node_modules', '__pycache__', '.pytest_cache', '.venv', 'venv'}:
+                            try:
+                                for sub in item.iterdir():
+                                    if getattr(self, "_paused", False):
+                                        return
+                                    if sub.is_file():
+                                        file_count += 1
+                            except (PermissionError, OSError):
+                                pass
                     total_files += file_count
                 except (PermissionError, OSError) as e:
                     log.debug("Cannot access %s: %s", path, e)

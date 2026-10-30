@@ -1,4 +1,4 @@
-"""
+﻿"""
 
 SentinelML V2 - Main Window
 
@@ -25,6 +25,7 @@ Layout:
 
 
 import logging
+import tkinter as tk
 from ai.sentinel_ai import SentinelAI
 
 import os
@@ -113,9 +114,11 @@ class MainWindow(ctk.CTk):
 
 
 
-    def __init__(self):
+    def __init__(self, show_animation: bool = False):
 
         super().__init__()
+        self._is_destroyed = False
+        self._pending_after_ids: set[str] = set()
 
 
 
@@ -153,7 +156,8 @@ class MainWindow(ctk.CTk):
             if getattr(sys, "frozen", False):
                 icon_path = Path(sys._MEIPASS) / "sentinel_icon.ico"
             if icon_path.exists():
-                self.iconbitmap(str(icon_path))
+                from utils.platform_adapter import get_platform_adapter
+                get_platform_adapter().set_window_icon(self, icon_path)
         except Exception as e:
             pass
 
@@ -199,25 +203,115 @@ class MainWindow(ctk.CTk):
 
 
 
-        # -- Show dashboard on startup -------------------------------------
-
-        self._show_page("dashboard")
-
-
-
         # -- Start periodic tick -------------------------------------------
-
         self.ai_copilot = SentinelAI(self._config.get("ai", {}))
         self._uptime_s = 0
-
         self._tick()
-        self.after(500, self._start_background_services)
+        self.safe_after(1200, self._start_background_services)
 
-
+        # -- Startup view transition ---------------------------------------
+        if show_animation:
+            log.info("MainWindow: launching inline cinematic startup sequence")
+            try:
+                from gui.startup_animation import show_startup_animation_inline
+                show_startup_animation_inline(
+                    self,
+                    duration=5000,
+                    on_complete=self._on_startup_animation_done
+                )
+            except Exception as anim_err:
+                log.warning("Startup animation failed (%s) — showing dashboard directly", anim_err)
+                self._show_page("dashboard")
+                self.safe_after(4000, self._prewarm_next_page, ["threats", "ransomware", "sentinel_ai", "settings"])
+        else:
+            self._show_page("dashboard")
+            self.safe_after(4000, self._prewarm_next_page, ["threats", "ransomware", "sentinel_ai", "settings"])
 
         log.info("MainWindow ready. Entering mainloop.")
 
+    def _on_startup_animation_done(self) -> None:
+        """Called seamlessly when startup animation completes or is skipped."""
+        if getattr(self, "_is_destroyed", False):
+            return
+        log.info("Startup animation finished — presenting dashboard in READY TO SCAN state.")
+        self._show_page("dashboard")
+        self.safe_after(3500, self._prewarm_next_page, ["threats", "ransomware", "sentinel_ai", "settings"])
 
+
+
+    def safe_after(self, ms: int, fn, *args, **kwargs):
+        """Schedule a callback and track its ID for safe cancellation upon window destruction."""
+        if getattr(self, "_is_destroyed", False):
+            return None
+        aid = None
+        def wrapper():
+            if not getattr(self, "_is_destroyed", False):
+                try:
+                    p = getattr(self, "_pending_after_ids", None)
+                    if p is not None and aid is not None:
+                        p.discard(aid)
+                    if hasattr(self, "winfo_exists") and self.winfo_exists():
+                        fn(*args, **kwargs)
+                except Exception:
+                    pass
+            else:
+                p = getattr(self, "_pending_after_ids", None)
+                if p is not None and aid is not None:
+                    p.discard(aid)
+        try:
+            aid = self.after(ms, wrapper)
+            p = getattr(self, "_pending_after_ids", None)
+            if p is not None and aid is not None:
+                p.add(aid)
+            return aid
+        except Exception:
+            return None
+
+    def destroy(self) -> None:
+        """Cancel all pending timers and destroy child pages cleanly without Tkinter errors."""
+        self._is_destroyed = True
+
+        # 1. Cancel tracked pending after ids
+        ids = list(getattr(self, "_pending_after_ids", set()))
+        if hasattr(self, "_pending_after_ids"):
+            self._pending_after_ids.clear()
+        for aid in ids:
+            try:
+                self.after_cancel(aid)
+            except Exception:
+                pass
+
+        # 2. Cancel all pending after scripts in Tcl (including CTk internal timers)
+        try:
+            if hasattr(self, "tk") and self.tk:
+                for after_id in self.tk.eval("after info").split():
+                    try:
+                        self.after_cancel(after_id)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        # 3. Destroy instantiated pages
+        for page in list(getattr(self, "_pages", {}).values()):
+            try:
+                page.destroy()
+            except Exception:
+                log.exception("Failed to destroy page during shutdown")
+        if hasattr(self, "_pages"):
+            self._pages.clear()
+
+        try:
+            super().destroy()
+        except Exception:
+            log.exception("Failed to destroy Tk root cleanly")
+
+        # Guarantee the event loop ends even if a child widget teardown raised.
+        try:
+            if self.winfo_exists():
+                self.tk.call("destroy", ".")
+        except Exception:
+            pass
 
     # -- Layout skeleton ---------------------------------------------------
 
@@ -329,8 +423,6 @@ class MainWindow(ctk.CTk):
 
             ("dashboard",     "Dashboard",    "[ * ]"),
 
-            ("exhibition",    "Exhibition",   "[ EX ]"),
-
             ("threats",       "Threat Log",   "[ ! ]"),
 
             ("sentinel_ai",   "SentinelAI",   "[ AI ]"),
@@ -403,43 +495,132 @@ class MainWindow(ctk.CTk):
         """Register page classes for lazy loading."""
         from gui.pages.sentinel_ai_page import SentinelAIPage
         from gui.pages.exhibition_page import ExhibitionPage
+        from gui.pages.exhibition_lab import ExhibitionLabPage
+        from gui.pages.guided_tour import GuidedTourPage
+        from gui.pages.attack_replay_page import AttackReplayPage
+        from gui.pages.ai_observatory_page import AIObservatoryPage
+        from gui.pages.integrity_watchtower_page import IntegrityWatchtowerPage
+        from gui.pages.applications_center import ApplicationsCenterPage
+        from gui.pages.command_center_page import CommandCenterPage
+        from gui.pages.story_mode_page import StoryModePage
+        from gui.pages.challenge_mode_page import ChallengeModePage
         self._page_classes = {
-            "dashboard":     DashboardPage,
-            "exhibition":    ExhibitionPage,
-            "threats":       ThreatsPage,
-            "sentinel_ai":   SentinelAIPage,
-            "ransomware":    RansomwarePage,
-            "settings":      SettingsPage,
+            "dashboard":           DashboardPage,
+            "exhibition":          ExhibitionPage,
+            "exhibition_lab":      ExhibitionLabPage,
+            "guided_tour":         GuidedTourPage,
+            "attack_replay":       AttackReplayPage,
+            "ai_observatory":      AIObservatoryPage,
+            "integrity_watchtower": IntegrityWatchtowerPage,
+            "applications_center": ApplicationsCenterPage,
+            "command_center":      CommandCenterPage,
+            "story_mode":          StoryModePage,
+            "challenge_mode":      ChallengeModePage,
+            "threats":             ThreatsPage,
+            "sentinel_ai":         SentinelAIPage,
+            "ransomware":          RansomwarePage,
+            "settings":            SettingsPage,
         }
 
     # -- Navigation --------------------------------------------------------
     def _show_page(self, uid: str) -> None:
-        if self._current_page == uid:
+        if self._current_page == uid and uid in self._pages:
             return
 
-        # Hide old page
-        if self._current_page and self._current_page in self._pages:
-            self._pages[self._current_page].grid_remove()
+        old_uid = self._current_page
+        old_frame = self._pages.get(old_uid) if old_uid else None
 
-        # Lazy load new page if not instantiated
+        # 1. Instantiate target page if not already cached, keeping previous page fully visible
         if uid not in self._pages:
-            log.info("Lazy loading page: %s", uid)
-            cls = self._page_classes[uid]
-            frame = cls(self, config=self._config)
-            frame.grid(row=0, column=1, sticky="nsew")
-            self._pages[uid] = frame
+            try:
+                log.info("Instantiating page: %s", uid)
+                cls = self._page_classes[uid]
+                frame = cls(self, config=self._config)
+                self._pages[uid] = frame
+            except Exception as e:
+                log.critical("Failed to construct page %s: %s", uid, e, exc_info=True)
+                if old_frame:
+                    old_frame.grid(row=0, column=1, sticky="nsew")
+                    tk.Misc.lift(old_frame)
+                else:
+                    # Provide visual error frame so the window is never blank black
+                    err_frame = ctk.CTkFrame(self, fg_color=C["bg"])
+                    err_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+                    ctk.CTkLabel(
+                        err_frame,
+                        text=f"Failed to load {uid.capitalize()}",
+                        font=ctk.CTkFont(size=20, weight="bold"),
+                        text_color=C["danger"],
+                    ).pack(anchor="w", pady=(20, 10))
+                    ctk.CTkLabel(
+                        err_frame,
+                        text=f"Error details:\n{e}\n\nPlease inspect the error logs at logs/app.log.",
+                        font=ctk.CTkFont(size=13),
+                        text_color=C["text"],
+                        justify="left",
+                    ).pack(anchor="w", pady=10)
+                    self._pages[uid] = err_frame
+                try:
+                    import tkinter.messagebox as mbox
+                    mbox.showerror("Page Load Error", f"Failed to load {uid.capitalize()} view:\n\n{e}")
+                except Exception:
+                    pass
+                return
 
-        # Reset all nav button colours
+        # 2. Display new page first, lifting it to prevent any blank visual gap
+        target_frame = self._pages[uid]
+        try:
+            target_frame.grid(row=0, column=1, sticky="nsew")
+            tk.Misc.lift(target_frame)
+            if uid == "dashboard":
+                log.info("Dashboard geometry/layout completed.")
+        except Exception as e:
+            log.error("Failed to grid page %s: %s", uid, e)
+            if old_frame:
+                old_frame.grid(row=0, column=1, sticky="nsew")
+                tk.Misc.lift(old_frame)
+            return
+
+        # 3. Safely remove previous page now that target is confirmed gridded and visible
+        if old_frame and old_frame != target_frame:
+            old_frame.grid_remove()
+
+        try:
+            self.update_idletasks()
+        except Exception:
+            pass
+
+        # 4. Synchronize sidebar button highlights
         for key, btn in self._nav_btns.items():
             btn.configure(
                 fg_color=C["accent"] if key == uid else "transparent",
                 text_color=C["white"] if key == uid else C["muted"],
             )
 
-        # Show new page
-        self._pages[uid].grid()
         self._current_page = uid
+        try:
+            hook = getattr(target_frame, "on_shown", None)
+            if callable(hook):
+                hook()
+        except Exception as e:
+            log.debug("on_shown hook failed for %s: %s", uid, e)
         log.debug("Switched to page: %s", uid)
+
+    def _prewarm_next_page(self, queue: list) -> None:
+        """Pre-warm pages during idle intervals so subsequent clicks have zero lag and zero blank screen."""
+        if not queue:
+            return
+        next_uid = queue.pop(0)
+        if next_uid not in self._pages:
+            try:
+                log.debug("Prewarming page: %s", next_uid)
+                cls = self._page_classes[next_uid]
+                frame = cls(self, config=self._config)
+                self._pages[next_uid] = frame
+            except Exception as e:
+                log.warning("Prewarming page %s failed: %s", next_uid, e)
+        if queue and not getattr(self, "_is_destroyed", False):
+            self.safe_after(2000, self._prewarm_next_page, queue)
 
 
 
@@ -470,7 +651,7 @@ class MainWindow(ctk.CTk):
 
 
 
-        self.after(1000, self._tick)
+        self.safe_after(1000, self._tick)
 
     
 
@@ -512,9 +693,35 @@ class MainWindow(ctk.CTk):
 
         log.info("User closed window. Shutting down.")
 
+        # Stop the SOC refresh thread before the Tk root disappears so the
+        # worker never touches destroyed widgets.
+        try:
+            dashboard = None
+            if isinstance(getattr(self, "_pages", None), dict):
+                dashboard = self._pages.get("dashboard")
+            if dashboard is not None and hasattr(dashboard, "stop_soc"):
+                dashboard.stop_soc(wait=True)
+        except Exception:
+            log.exception("Failed to stop SOC monitoring on close")
+
+        try:
+            from guard.sentinel_guard import get_guard_instance
+            get_guard_instance().stop()
+        except Exception:
+            pass
+
         cfg.save(self._config)
 
-        self.destroy()
+        try:
+            self.destroy()
+        finally:
+            # A teardown error must never leave the Tk mainloop running with
+            # no window: that leaves an invisible process holding the
+            # single-instance lock.
+            try:
+                self.quit()
+            except Exception:
+                pass
 
 
 
@@ -527,26 +734,24 @@ class MainWindow(ctk.CTk):
                 import time
                 import logging
                 log = logging.getLogger(__name__)
-                # Wait for 3D animation to finish before doing heavy imports that block the GIL
-                log.info("Delaying background init to avoid freezing startup animation...")
-                time.sleep(3.0)
+                log.info("Starting background services asynchronously...")
                 
-                # 1. Start SentinelGuard
+                # 1. Preload ML model eagerly so the first scan is instantaneous
+                from ml.predictor import MLPredictor
+                predictor = MLPredictor()
+                if not predictor.is_loaded():
+                    predictor.load_model()
+                    log.info("ML Model preloaded successfully.")
+
+                # 2. Start SentinelGuard
                 from guard.sentinel_guard import get_guard_instance
                 guard = get_guard_instance()
                 if not guard.is_running():
                     guard.start()
                     log.info("Background Guard started successfully.")
                 
-                # 2. Initialize SentinelAI in background
+                # 3. Initialize SentinelAI in background
                 self.ai_copilot.initialize()
-                
-                # 3. Preload ML model so the first scan is fast
-                from ml.predictor import MLPredictor
-                predictor = MLPredictor()
-                if not predictor.is_loaded():
-                    predictor.load_model()
-                    log.info("ML Model preloaded successfully.")
                     
             except Exception as e:
                 log.error("Failed to start background services: %s", e)

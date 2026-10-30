@@ -224,18 +224,12 @@ class BenignTelemetryCollector:
         defender_tampered = 0.0
         try:
             if sys.platform == "win32":
-                import ctypes
-                advapi32 = ctypes.windll.advapi32
-                SC_MANAGER_CONNECT = 0x0001
-                SERVICE_QUERY_STATUS = 0x0004
-                scm = advapi32.OpenSCManagerW(None, None, SC_MANAGER_CONNECT)
-                if scm:
-                    svc = advapi32.OpenServiceW(scm, "WinDefend", SERVICE_QUERY_STATUS)
-                    if svc:
-                        advapi32.CloseServiceHandle(svc)
-                    else:
+                try:
+                    svc = psutil.win_service_get("WinDefend")
+                    if svc.status() not in ("running", "start_pending"):
                         defender_tampered = 1.0
-                    advapi32.CloseServiceHandle(scm)
+                except (psutil.NoSuchProcess, Exception):
+                    defender_tampered = 1.0
             sensors_succeeded += 1
         except Exception:
             sensors_succeeded += 1  # Graceful fallback
